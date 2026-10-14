@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trip Split Tracker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f7b5f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Trip Split">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--text:#1d2b27;--muted:#6b7773;--accent:#0f7b5f;--line:#d9d6cc;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14201d;--card:#1d2d29;--text:#eef3f1;--muted:#9bb0aa;--accent:#3ccf9f;--line:#33463f}}
+:root[data-theme="dark"]{--bg:#14201d;--card:#1d2d29;--text:#eef3f1;--muted:#9bb0aa;--accent:#3ccf9f;--line:#33463f}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;padding:16px}
+.card{max-width:440px;margin:0 auto 14px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+h1{font-size:1.25rem;margin:0 0 12px}h2{font-size:1rem;margin:0 0 10px}
+label{display:block;font-size:.8rem;color:var(--muted);margin:10px 0 4px}
+input,select{width:100%;box-sizing:border-box;font-size:1.1rem;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text)}
+.row{display:flex;gap:8px}.row input:first-child{flex:0 0 32%}
+button{font-size:1rem;padding:11px 14px;border-radius:10px;border:0;background:var(--accent);color:#fff;font-weight:600}
+button.ghost{background:none;border:1px solid var(--accent);color:var(--accent)}
+button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
+.add{width:100%;margin-top:10px}
+.item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.item .amt{flex:0 0 auto;font-weight:600}.item .desc{flex:1;min-width:0;overflow-wrap:anywhere}
+.tot{display:flex;justify-content:space-between;margin-top:10px;font-weight:600}
+.result{margin-top:14px;padding:14px;border-radius:12px;background:var(--accent);color:#fff;font-size:1.2rem;font-weight:600;text-align:center}
+.result.idle{background:none;color:var(--muted);font-size:.95rem;font-weight:400;padding:8px}
+.sub{margin-top:8px;font-size:.85rem;color:var(--muted);text-align:center}
+.link{display:block;margin-top:12px;padding:11px;text-align:center;border:1px solid var(--accent);border-radius:10px;color:var(--accent);text-decoration:none;font-weight:600}
+.day{padding:12px 0;border-bottom:1px solid var(--line)}.daytxt{white-space:pre-wrap;font:inherit;font-size:.95rem;margin:0 0 8px;user-select:text;-webkit-user-select:text}.btns{display:flex;gap:8px}.btns button{flex:1;padding:8px;font-size:.9rem}
+.empty{color:var(--muted);font-size:.9rem}
+.rtitle{font-size:1.3rem;font-weight:700;color:var(--accent)}
+.rsub{font-size:.85rem;color:var(--muted);margin-bottom:6px}
+.rh{font-weight:700;font-size:1.02rem;margin:18px 0 6px;color:var(--accent);border-bottom:2px solid var(--accent);padding-bottom:4px}
+.dh{display:flex;justify-content:space-between;gap:8px;font-weight:600;margin-top:14px}
+.dh span+span{font-weight:400;color:var(--muted);font-size:.78rem;white-space:nowrap;align-self:center}
+.rr{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:.93rem}
+.rr span:last-child{white-space:nowrap;font-variant-numeric:tabular-nums}
+.rf{display:flex;justify-content:space-between;gap:8px;padding:9px 10px;margin-top:6px;border-radius:8px;background:var(--bg);font-size:.88rem}
+.rf span:last-child{font-weight:700;white-space:nowrap}
+.rbox{margin-top:8px;padding:12px;border-radius:12px;background:var(--bg)}
+.rbox .rs{display:flex;justify-content:space-between;gap:8px;padding:4px 0;font-weight:600}
+[hidden]{display:none!important}
+@media print{.noprint{display:none!important}body{background:#fff!important;color:#000!important;padding:0!important}.card{background:#fff!important;border:0!important;color:#000!important}.daytxt{color:#000!important}.rf,.rbox{background:#eef3f1!important}.rtitle,.rh,.rf span:last-child{color:#0f7b5f!important}.rsub,.dh span+span{color:#555!important}.rr,.rh{border-color:#ccc!important}}
+.nav{padding:10px}.nav .btns button{padding:10px 4px;font-size:.85rem}
+.note{font-size:.8rem;color:var(--muted);margin:8px 0 0}
+</style>
+</head>
+<body>
+<div class="card nav noprint" id="navCard"><div class="btns"><button id="navDaily">Daily split</button><button id="navTab" class="ghost">Trip Tab</button><button id="navRep" class="ghost">Finish trip</button></div></div>
+<div id="viewStart" hidden>
+<div class="card" id="tripListCard">
+  <h1>Your trips</h1>
+  <div id="tripList"></div>
+</div>
+<div class="card">
+  <h2>Start a new trip</h2>
+  <label for="newName">Trip name</label>
+  <input id="newName" type="text" placeholder="e.g. UK weekend" autocomplete="off">
+  <label for="newPeople">Who's on the trip? (names, separated by commas)</label>
+  <input id="newPeople" type="text" placeholder="e.g. Al, Rob, Jools" autocomplete="off">
+  <label for="selPayer">Who pays by card? (the others repay them each day)</label>
+  <select id="selPayer"></select>
+  <label for="selPicker">Who picks up the Trip Tab? (pays for big deferred costs)</label>
+  <select id="selPicker"></select>
+  <label for="selDebtor">Who owes the Trip Tab?</label>
+  <select id="selDebtor"></select>
+  <p class="note" id="startErr" style="color:#c0392b;font-weight:600"></p>
+  <p class="note" style="margin:12px 0 4px;font-size:.9rem">What currency will you be spending in?</p>
+  <button class="add" id="startEur">€ Euro trip</button>
+  <p class="note" style="margin:4px 0 10px">Spends in euros, converted to pounds at the Monzo (Mastercard) rate.</p>
+  <button class="add" id="startGbp">£ Pound trip</button>
+  <p class="note" style="margin:4px 0 0">Spends in pounds, so no rate or conversion is needed.</p>
+  <button class="ghost add" id="startBack" hidden>Back to current trip</button>
+</div>
+</div>
+<div id="viewDaily">
+<div class="card">
+  <h1>Split tracker</h1>
+  <p class="note" style="margin:0 0 6px"><span id="tripType"></span> <button class="ghost" id="tripChange" style="padding:4px 10px;font-size:.8rem;margin-left:6px">Trips</button></p>
+  <label for="date">Day</label>
+  <input id="date" type="date">
+  <div id="rateWrap">
+  <label for="rate">Mastercard rate for this day (€ per £1)</label>
+  <input id="rate" type="number" inputmode="decimal" step="0.0001">
+  <a class="link" href="https://monzo.com/ecb-rates" target="_blank" rel="noopener">Check today's Monzo rate →</a>
+  </div>
+</div>
+<div class="card">
+  <h2 id="dayTitle"></h2>
+  <div id="list"></div>
+  <div class="row" style="margin-top:12px">
+    <input id="amt" type="number" inputmode="decimal" step="0.01" placeholder="€ 0.00">
+    <input id="desc" type="text" placeholder="What was it?">
+  </div>
+  <button class="add" id="addBtn">Add spend</button>
+</div>
+<div class="card">
+  <div class="tot"><span>Total for the day</span><span id="total">€0.00</span></div>
+  <div class="result idle" id="result">Shares will appear here</div>
+  <div class="sub" id="sub"></div>
+  <button class="ghost add" id="copyBtn">Copy day summary</button>
+</div>
+<div class="card">
+  <h2>All days</h2>
+  <div id="hist"></div>
+</div>
+</div>
+<div id="viewTab" hidden>
+<div class="card">
+  <h1 id="tabTitle">Trip Tab</h1>
+  <p class="note" id="tabNote" style="margin:0 0 10px">Things paid for outside the daily split.</p>
+  <div id="tabList"></div>
+  <div class="row" style="margin-top:12px">
+    <input id="tAmt" type="number" inputmode="decimal" step="0.01" placeholder="0.00">
+    <input id="tDesc" type="text" placeholder="What was it for?">
+  </div>
+  <div class="row" style="margin-top:8px">
+    <select id="tCur" style="flex:1"><option value="GBP">£ Pounds</option><option value="EUR">€ Euros</option></select>
+    <button id="tAdd" style="flex:1">Add to tab</button>
+  </div>
+  <p class="note" id="tNote"></p>
+</div>
+<div class="card">
+  <div class="result idle" id="tResult">Nothing on the tab</div>
+  <pre class="daytxt" id="tText" style="margin-top:12px"></pre>
+  <button class="ghost add" id="tCopy">Copy tab summary</button>
+</div>
+<div class="card" id="repayCard">
+  <h2 id="rpTitle">Repayments</h2>
+  <p class="note" id="rpFinal" style="margin:0 0 10px"></p>
+  <button class="add" id="rpFinalise">Finalise tab amount</button>
+  <div id="rpBody" hidden>
+    <div id="rpList"></div>
+    <div class="row" style="margin-top:12px">
+      <input id="rpAmt" type="number" inputmode="decimal" step="0.01" placeholder="£ 0.00">
+      <input id="rpNote" type="text" placeholder="Note (optional)">
+    </div>
+    <div class="row" style="margin-top:8px">
+      <select id="rpMethod" style="flex:1"><option>Bank transfer</option><option>Meal bought</option><option>Drink / pint bought</option><option>Cash</option><option>Other</option></select>
+      <input id="rpDate" type="date" style="flex:1">
+    </div>
+    <button class="add" id="rpAdd">Log repayment</button>
+    <div class="result" id="rpBal" style="margin-top:14px"></div>
+  </div>
+</div>
+</div>
+<div id="viewRep" hidden>
+<div class="card">
+  <h1 class="noprint">Finish trip</h1>
+  <p class="note noprint" style="margin:0 0 10px">Every day and spend from the daily split, plus the Trip Tab. Your logs are not changed or locked.</p>
+  <div class="noprint">
+    <label for="countrySel">Country for this trip</label>
+    <select id="countrySel"><option value="Italy">Italy</option><option value="Spain">Spain</option><option value="France">France</option><option value="Portugal">Portugal</option><option value="Greece">Greece</option><option value="Germany">Germany</option><option value="Netherlands">Netherlands</option><option value="Croatia">Croatia</option><option value="Malta">Malta</option><option value="Austria">Austria</option><option value="Switzerland">Switzerland</option><option value="Ireland">Ireland</option><option value="Turkey">Turkey</option><option value="Czech Republic">Czech Republic</option><option value="Poland">Poland</option><option value="United States">United States</option><option value="United Kingdom">United Kingdom</option><option value="England">England</option><option value="Scotland">Scotland</option><option value="Wales">Wales</option><option value="Northern Ireland">Northern Ireland</option><option value="__other">Other (type it in)…</option></select>
+    <input id="country" type="text" placeholder="Type the country" autocomplete="off" hidden style="margin-top:8px">
+  </div>
+  <div id="repView"></div>
+  <div style="height:12px"></div>
+  <button class="add noprint" id="pdfBtn">Download PDF report</button>
+  <button class="ghost add noprint" id="shareBtn" hidden>Share PDF</button>
+  <button class="ghost add noprint" id="printBtn">Print / Save as PDF</button>
+  <button class="ghost add noprint" id="repCopy">Copy report text</button>
+  <p class="note noprint" id="repNote"></p>
+</div>
+<div class="card noprint">
+  <h2>Delete this trip</h2>
+  <p class="note" style="margin:0 0 10px">Removes this trip (all its days, Trip Tab entries and repayments) from this device. Your other trips are not affected. Save your PDF or copy the report first.</p>
+  <button class="ghost add" id="clearBtn">Delete this trip</button>
+  <div id="clearConfirm" hidden>
+    <p class="note" id="clearWarn" style="color:#c0392b;font-weight:600"></p>
+    <p class="note" style="color:var(--text);font-weight:600">Delete this whole trip? This can't be undone.</p>
+    <div class="btns"><button id="clearYes" style="background:#c0392b">Yes, delete this trip</button><button class="ghost" id="clearNo">Cancel</button></div>
+  </div>
+  <p class="note" id="clearNote"></p>
+</div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+async function copyText(txt){
+  try{await navigator.clipboard.writeText(txt);return true;}catch(e){}
+  try{const t=document.createElement('textarea');t.value=txt;t.setAttribute('readonly','');t.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(t);t.focus();t.select();t.setSelectionRange(0,txt.length);const ok=document.execCommand('copy');document.body.removeChild(t);return ok;}catch(e){return false;}
+}
+// ---- Trips (each trip keeps its own data; the first trip uses the original storage keys) ----
+let trips=null;
+try{const t=localStorage.getItem('robtrips-v1');if(t)trips=JSON.parse(t);}catch(e){}
+if(!trips){
+  let nm='New trip';
+  try{if(localStorage.getItem('robsplit-v2')!==null){const c=localStorage.getItem('robsplit-country');nm=(c&&c.trim()?c.trim():'Italy')+' trip';}}catch(e){}
+  trips={current:'t1',list:[{id:'t1',name:nm}]};
+  try{localStorage.setItem('robtrips-v1',JSON.stringify(trips));}catch(e){}
+}
+const keyFor=(id,b)=>id==='t1'?b:b+'-'+id;
+const K=b=>keyFor(trips.current,b);
+const saveTrips=()=>{try{localStorage.setItem('robtrips-v1',JSON.stringify(trips));}catch(e){}};
+const curTrip=()=>trips.list.find(x=>x.id===trips.current)||{name:''};
+const PKEY=K('robsplit-people');
+let ppl={names:[],payer:'',picker:'',debtor:''};
+try{
+  const t=localStorage.getItem(PKEY);
+  if(t)ppl=JSON.parse(t);
+  else if(localStorage.getItem(K('robsplit-v2'))!==null||localStorage.getItem(K('robsplit-mode'))!==null)ppl={names:['Al','Rob'],payer:'Al',picker:'Rob',debtor:'Al'};
+}catch(e){}
+const savePeople=()=>{try{localStorage.setItem(PKEY,JSON.stringify(ppl));}catch(e){}};
+const N=()=>Math.max(2,ppl.names.length);
+const splitLabel=()=>N()===2?'50/50':'equal shares';
+const others=()=>ppl.names.filter(n=>n!==ppl.payer);
+const oweText=()=>{const o=others();return o.length<2?(o[0]||'Others')+' needs':o.slice(0,-1).join(', ')+' and '+o[o.length-1]+' each need';};
+const KEY=K('robsplit-v2');
+let data={days:{},lastRate:1.1722};
+let mode=null;
+try{mode=localStorage.getItem(K('robsplit-mode'));}catch(e){}
+const CS=()=>mode==='GBP'?'£':'€';
+try{const s=localStorage.getItem(KEY);if(s)data=JSON.parse(s);}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}}
+function today(){const n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');}
+function label(k){const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}
+function day(k){if(!data.days[k])data.days[k]={rate:mode==='GBP'?1:data.lastRate,items:[]};return data.days[k];}
+const sum=k=>day(k).items.reduce((t,i)=>t+i.a,0);
+const gbp=k=>{const r=day(k).rate;return r>0?sum(k)/N()/r:0;};
+const summary=k=>label(k)+'\n'+day(k).items.map(i=>CS()+i.a.toFixed(2)+' - '+i.d).join('\n')+'\nTotal for the day: '+CS()+sum(k).toFixed(2)+'\nShare per person: £'+gbp(k).toFixed(2)+(mode==='GBP'?'':' (rate '+day(k).rate+')');
+$('date').value=today();
+function render(){
+  const k=$('date').value||today(),dd=day(k);
+  if(document.activeElement!==$('rate'))$('rate').value=dd.rate;
+  $('dayTitle').textContent=label(k);
+  const list=$('list');list.innerHTML='';
+  if(!dd.items.length){const e=document.createElement('div');e.className='empty';e.textContent='No spends logged yet.';list.appendChild(e);}
+  dd.items.forEach((it,i)=>{
+    const r=document.createElement('div');r.className='item';
+    const a=document.createElement('span');a.className='amt';a.textContent=CS()+it.a.toFixed(2);
+    const d=document.createElement('span');d.className='desc';d.textContent=it.d;
+    const x=document.createElement('button');x.className='x';x.textContent='✕';
+    x.onclick=()=>{dd.items.splice(i,1);save();render();};
+    r.append(a,d,x);list.appendChild(r);
+  });
+  const t=sum(k);$('total').textContent=CS()+t.toFixed(2);
+  if(t>0&&dd.rate>0){
+    $('result').textContent=oweText()+' to pay '+ppl.payer+', £'+gbp(k).toFixed(2);
+    $('sub').textContent=(N()===2?'Half':'1/'+N())+' of '+CS()+t.toFixed(2)+' = '+CS()+(t/N()).toFixed(2)+(mode==='GBP'?'':' ÷ '+dd.rate);
+  }else{$('result').textContent='Shares will appear here';$('sub').textContent='';}
+  $('result').classList.toggle('idle',!(t>0&&dd.rate>0));
+  const h=$('hist');h.innerHTML='';
+  Object.keys(data.days).filter(x=>data.days[x].items.length).sort().reverse().forEach(x=>{
+    const r=document.createElement('div');r.className='day';
+    const pre=document.createElement('pre');pre.className='daytxt';pre.textContent=summary(x);
+    const b=document.createElement('div');b.className='btns';
+    const o=document.createElement('button');o.className='ghost';o.textContent='Open day';
+    o.onclick=()=>{$('date').value=x;render();window.scrollTo(0,0);};
+    const c=document.createElement('button');c.className='ghost';c.textContent='Copy';
+    c.onclick=async()=>{c.textContent=(await copyText(summary(x)))?'Copied ✓':'Select text instead';setTimeout(()=>c.textContent='Copy',1800);};
+    b.append(o,c);r.append(pre,b);h.appendChild(r);
+  });
+}
+$('date').addEventListener('change',render);
+$('rate').addEventListener('input',()=>{
+  const v=parseFloat($('rate').value);if(v>0){const k=$('date').value||today();day(k).rate=v;data.lastRate=v;save();render();}
+});
+$('addBtn').onclick=()=>{
+  const a=parseFloat($('amt').value);if(!(a>0))return;
+  const k=$('date').value||today();
+  day(k).items.push({a:Math.round(a*100)/100,d:$('desc').value.trim()||'Spend'});
+  $('amt').value='';$('desc').value='';save();render();
+};
+$('copyBtn').onclick=async()=>{
+  const k=$('date').value||today(),dd=day(k);if(!dd.items.length)return;
+  const txt=summary(k);
+  $('copyBtn').textContent=(await copyText(txt))?'Copied ✓':'Select the text below instead';
+  setTimeout(()=>$('copyBtn').textContent='Copy day summary',1800);
+};
+
+// ---- Repayments to Rob ----
+const RKEY=K('robrepay-v1');
+let rp={final:null,items:[]};
+try{const t=localStorage.getItem(RKEY);if(t)rp=JSON.parse(t);}catch(e){}
+function rsave(){try{localStorage.setItem(RKEY,JSON.stringify(rp));}catch(e){}}
+const rPaid=()=>Math.round(rp.items.reduce((t,i)=>t+i.a,0)*100)/100;
+const rBal=()=>Math.round(((rp.final||0)-rPaid())*100)/100;
+const fmtD=iso=>{const [y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('en-GB',{day:'numeric',month:'short'});};
+const balText=b=>b>0.004?'Still owed to '+ppl.picker+': £'+b.toFixed(2):(b<-0.004?'Overpaid by £'+(-b).toFixed(2):'Fully repaid');
+function repData(){
+  if(rp.final===null)return null;
+  let run=rp.final;
+  const items=rp.items.map(i=>{run=Math.round((run-i.a)*100)/100;return{date:fmtD(i.d),m:i.m,n:i.n,a:i.a,bal:run};});
+  return{final:rp.final,items:items,paid:rPaid(),bal:rBal()};
+}
+$('rpDate').value=today();
+function renderRepay(){
+  const cur=tSum(),fin=rp.final,info=$('rpFinal'),btn=$('rpFinalise'),body=$('rpBody');
+  if(fin===null){
+    info.textContent=cur>0?'Tab total so far: £'+cur.toFixed(2)+'. Finalise it once the tab is complete to start logging repayments.':'Add Trip Tab entries above, then finalise the amount here.';
+    btn.hidden=cur<=0;btn.textContent='Finalise tab amount (£'+cur.toFixed(2)+')';body.hidden=true;
+    return;
+  }
+  const changed=Math.abs(cur-fin)>0.004;
+  info.textContent='Amount owed (finalised): £'+fin.toFixed(2)+(changed?'  |  The tab now totals £'+cur.toFixed(2):'');
+  btn.hidden=!changed||cur<=0;btn.textContent='Update finalised amount to £'+cur.toFixed(2);
+  body.hidden=false;
+  const l=$('rpList');l.innerHTML='';
+  const rd=repData();
+  if(!rd.items.length){const e=document.createElement('div');e.className='empty';e.textContent='No repayments logged yet.';l.appendChild(e);}
+  rd.items.forEach((it,n)=>{
+    const r=document.createElement('div');r.className='item';
+    const a=document.createElement('span');a.className='amt';a.textContent='£'+it.a.toFixed(2);
+    const d=document.createElement('span');d.className='desc';
+    const m=document.createElement('div');m.textContent=it.date+' · '+it.m+(it.n?' - '+it.n:'');
+    const b=document.createElement('div');b.className='note';b.style.margin='0';b.textContent='balance after: £'+it.bal.toFixed(2);
+    d.append(m,b);
+    const x=document.createElement('button');x.className='x';x.textContent='✕';
+    x.onclick=()=>{rp.items.splice(n,1);rsave();renderRepay();};
+    r.append(a,d,x);l.appendChild(r);
+  });
+  const bal=rBal();
+  $('rpBal').textContent=bal>0.004?ppl.debtor+' still owes '+ppl.picker+' £'+bal.toFixed(2):(bal<-0.004?'Overpaid by £'+(-bal).toFixed(2):'All repaid ✓');
+}
+$('rpFinalise').onclick=()=>{const c=tSum();if(c<=0)return;rp.final=c;rsave();renderRepay();};
+$('rpAdd').onclick=()=>{
+  if(rp.final===null)return;
+  const a=parseFloat($('rpAmt').value);if(!(a>0))return;
+  rp.items.push({d:$('rpDate').value||today(),m:$('rpMethod').value,n:$('rpNote').value.trim(),a:Math.round(a*100)/100});
+  $('rpAmt').value='';$('rpNote').value='';rsave();renderRepay();
+};
+// ---- Rob Trip Tab (separate log; only shares the € rate) ----
+const TKEY=K('robtab-v1');
+let tab=null;
+try{const t=localStorage.getItem(TKEY);if(t)tab=JSON.parse(t);}catch(e){}
+if(!tab){tab={items:[]};}
+function tsave(){try{localStorage.setItem(TKEY,JSON.stringify(tab));}catch(e){}}
+function curRate(){const v=parseFloat($('rate').value);return v>0?v:data.lastRate;}
+const r2=x=>Math.round(x*100)/100;
+const tGBP=i=>i.c==='GBP'?i.a:r2(i.a/i.rate);
+const tSum=()=>r2(tab.items.reduce((t,i)=>t+tGBP(i),0));
+const tTxt=()=>'Trip Tab ('+ppl.picker+')\n'+tab.items.map(tLine).join('\n')+'\n'+ppl.debtor+' owes '+ppl.picker+': £'+tSum().toFixed(2);
+const tLine=i=>i.c==='GBP'?'£'+i.a.toFixed(2)+' - '+i.d:'€'+i.a.toFixed(2)+' (£'+tGBP(i).toFixed(2)+' @ '+i.rate+') - '+i.d;
+function renderTab(){
+  const l=$('tabList');l.innerHTML='';
+  if(!tab.items.length){const e=document.createElement('div');e.className='empty';e.textContent='No entries yet.';l.appendChild(e);}
+  tab.items.forEach((it,n)=>{
+    const r=document.createElement('div');r.className='item';
+    const a=document.createElement('span');a.className='amt';a.textContent=(it.c==='GBP'?'£':'€')+it.a.toFixed(2);
+    const d=document.createElement('span');d.className='desc';
+    d.textContent=it.d+(it.c==='EUR'?'  → £'+tGBP(it).toFixed(2)+' @ '+it.rate:'');
+    const x=document.createElement('button');x.className='x';x.textContent='✕';
+    x.onclick=()=>{tab.items.splice(n,1);tsave();renderTab();};
+    r.append(a,d,x);l.appendChild(r);
+  });
+  $('tResult').textContent=tab.items.length?ppl.debtor+' owes '+ppl.picker+' £'+tSum().toFixed(2):'Nothing on the tab';
+  $('tResult').classList.toggle('idle',!tab.items.length);
+  $('tText').textContent=tab.items.length?tTxt():'';
+  renderRepay();
+  $('tNote').textContent=$('tCur').value==='EUR'?'€ entries convert at the daily Monzo rate currently set ('+curRate()+') and keep that rate.':'';
+}
+$('tCur').addEventListener('change',renderTab);
+$('tAdd').onclick=()=>{
+  const a=parseFloat($('tAmt').value);if(!(a>0))return;
+  const c=$('tCur').value,it={c:c,a:r2(a),d:$('tDesc').value.trim()||'Spend'};
+  if(c==='EUR')it.rate=curRate();
+  tab.items.push(it);$('tAmt').value='';$('tDesc').value='';tsave();renderTab();
+};
+$('tCopy').onclick=async()=>{
+  if(!tab.items.length)return;
+  $('tCopy').textContent=(await copyText(tTxt()))?'Copied ✓':'Select the text above instead';
+  setTimeout(()=>$('tCopy').textContent='Copy tab summary',2200);
+};
+$('navDaily').onclick=()=>show('daily');$('navTab').onclick=()=>show('tab');
+renderTab();
+
+// ---- Trip report (Finish trip) ----
+function tripTitle(cap){const c=($('country').value||'').trim();return cap?(c?c+' Trip Report':'Trip Report'):(c?c+' trip report':'Trip report');}
+function pdfName(){const c=($('country').value||'').trim().replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'');return (c||'Trip')+'-trip-report.pdf';}
+const COUNTRIES=['Italy', 'Spain', 'France', 'Portugal', 'Greece', 'Germany', 'Netherlands', 'Croatia', 'Malta', 'Austria', 'Switzerland', 'Ireland', 'Turkey', 'Czech Republic', 'Poland', 'United States','United Kingdom','England','Scotland','Wales','Northern Ireland'];
+const saveCountry=()=>{try{localStorage.setItem(K('robsplit-country'),$('country').value);}catch(e){}};
+function syncCountryUI(){const v=$('country').value,known=COUNTRIES.includes(v);$('countrySel').value=known?v:'__other';$('country').hidden=known;}
+try{const c=localStorage.getItem(K('robsplit-country'));$('country').value=c===null?'Italy':c;}catch(e){$('country').value='Italy';}
+syncCountryUI();
+$('countrySel').addEventListener('change',()=>{
+  const v=$('countrySel').value;
+  if(v==='__other'){$('country').value='';$('country').hidden=false;$('country').focus();}
+  else{$('country').value=v;$('country').hidden=true;}
+  saveCountry();renderRep();
+});
+$('country').addEventListener('input',()=>{saveCountry();renderRep();});
+function reportData(){
+  const keys=Object.keys(data.days).filter(k=>data.days[k].items.length).sort();
+  let totE=0,totG=0;
+  const days=keys.map(k=>{
+    const dd=data.days[k],t=r2(sum(k)),g=r2(gbp(k));totE+=t;totG+=g;
+    return{label:label(k),rate:dd.rate,items:dd.items,total:t,half:r2(t/N()),share:g};
+  });
+  const tabItems=tab.items.map(i=>({desc:i.d,eur:i.c==='EUR'?i.a:null,rate:i.rate,gbp:tGBP(i)}));
+  return{date:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}),days:days,totE:r2(totE),totG:r2(totG),tabItems:tabItems,tabTotal:tSum(),rp:repData()};
+}
+const E=x=>CS()+x.toFixed(2),P=x=>'£'+x.toFixed(2);
+function reportText(){
+  const d=reportData(),L=[];
+  L.push(tripTitle().toUpperCase(),ppl.names.join(' & ')+'  |  '+d.date,'','1. DAILY SPLIT ('+splitLabel().toUpperCase()+')');
+  d.days.forEach(x=>{
+    L.push('',x.label+(mode==='GBP'?'':'  (rate '+x.rate+' per £1)'));
+    x.items.forEach(i=>L.push('  '+E(i.a)+'  '+i.d));
+    L.push('  Day total '+E(x.total)+'  |  Each share '+E(x.half)+'  |  Each pays '+P(x.share));
+  });
+  if(!d.days.length)L.push('','No spends logged.');
+  L.push('','Split totals: '+E(d.totE)+' spent  |  Each person\'s shares '+P(d.totG),'','2. TRIP TAB (paid by '+ppl.picker+')');
+  d.tabItems.forEach(i=>L.push('  '+(i.eur!==null?E(i.eur)+' (= '+P(i.gbp)+' at '+i.rate+')':P(i.gbp))+'  '+i.desc));
+  if(!d.tabItems.length)L.push('  No entries.');
+  L.push('Trip Tab total: '+ppl.debtor+' owes '+ppl.picker+' '+P(d.tabTotal));
+  if(d.rp){
+    L.push('','3. REPAYMENTS TO '+ppl.picker.toUpperCase(),'Amount owed (finalised): '+P(d.rp.final));
+    d.rp.items.forEach(i=>L.push('  '+i.date+'  '+i.m+(i.n?' - '+i.n:'')+'  '+P(i.a)+'  (balance '+P(i.bal)+')'));
+    if(!d.rp.items.length)L.push('  No repayments logged yet.');
+    L.push('Repaid '+P(d.rp.paid)+'  |  '+balText(d.rp.bal));
+  }
+  L.push('',(d.rp?'4':'3')+'. SUMMARY','Each person\'s share of the daily split: '+P(d.totG),ppl.debtor+' owes '+ppl.picker+' for the Trip Tab: '+P(d.tabTotal));
+  if(d.rp)L.push('After repayments: '+balText(d.rp.bal));
+  return L.join('\n');
+}
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e;}
+function row(a,b,cls){const r=el('div',cls||'rr');r.append(el('span','',a),el('span','',b));return r;}
+function renderRep(){
+  const d=reportData(),v=$('repView');v.innerHTML='';
+  v.append(el('div','rtitle',tripTitle()),el('div','rsub',ppl.names.join(' & ')+'  ·  '+d.date),el('div','rh','1. Daily split ('+splitLabel()+')'));
+  d.days.forEach(x=>{
+    v.append(row(x.label,mode==='GBP'?'':'rate '+x.rate+' per £1','dh'));
+    x.items.forEach(i=>v.append(row(i.d,E(i.a))));
+    v.append(row('Day total '+E(x.total)+'  ·  each '+E(x.half),'Each pays '+P(x.share),'rf'));
+  });
+  if(!d.days.length)v.append(el('div','empty','No spends logged.'));
+  v.append(row('Total spent '+E(d.totE),'Each person\'s shares '+P(d.totG),'rf'));
+  v.append(el('div','rh','2. Trip Tab (paid by '+ppl.picker+')'));
+  d.tabItems.forEach(i=>v.append(row(i.desc+(i.eur!==null?'  ('+E(i.eur)+' @ '+i.rate+')':''),P(i.gbp))));
+  if(!d.tabItems.length)v.append(el('div','empty','No entries.'));
+  v.append(row(ppl.debtor+' owes '+ppl.picker,'£'+d.tabTotal.toFixed(2),'rf'));
+  if(d.rp){
+    v.append(el('div','rh','3. Repayments to '+ppl.picker));
+    d.rp.items.forEach(i=>v.append(row(i.date+' · '+i.m+(i.n?' - '+i.n:'')+'  (balance '+P(i.bal)+')',P(i.a))));
+    if(!d.rp.items.length)v.append(el('div','empty','No repayments logged yet.'));
+    v.append(row('Owed '+P(d.rp.final)+'  ·  repaid '+P(d.rp.paid),balText(d.rp.bal),'rf'));
+  }
+  v.append(el('div','rh',(d.rp?'4':'3')+'. Summary'));
+  const bx=el('div','rbox');
+  bx.append(row('Each person\'s share of the daily split',P(d.totG),'rs'),row(ppl.debtor+' owes '+ppl.picker+' for the Trip Tab',P(d.tabTotal),'rs'));
+  if(d.rp)bx.append(row('After repayments',balText(d.rp.bal),'rs'));
+  v.append(bx);
+}
+function makePdf(){
+  const d=reportData();
+  const PW=595,PH=842,M=44,R=PW-M,CW=PW-2*M;
+  const GREEN=[.06,.48,.37],GRAY=[.42,.45,.44],LIGHT=[.93,.96,.95],RULE=[.8,.83,.82],DARK=[.1,.16,.14],WHITE=[1,1,1];
+  const WID={' ':.278};
+  "a556 b556 c500 d556 e556 f278 g556 h556 i222 j222 k500 l222 m833 n556 o556 p556 q556 r333 s500 t278 u556 v500 w722 x500 y500 z500 A667 B667 C722 D722 E667 F611 G778 H722 I278 J500 K667 L556 M833 N722 O778 P667 Q778 R722 S667 T611 U722 V667 W944 X667 Y667 Z611 0556 1556 2556 3556 4556 5556 6556 7556 8556 9556 .278 ,278 -333 (333 )333 /278 :278 |260 &667 @1015 =584 %889 €556 £556 '191 ·278 ;278 !278 ?556 +584".split(' ').forEach(t=>{WID[t[0]]=parseInt(t.slice(1),10)/1000;});
+  const tw=(t,fs,b)=>[...t].reduce((a,ch)=>a+(WID[ch]===undefined?.55:WID[ch]),0)*fs*(b?1.07:1);
+  const bin=t=>[...t].map(ch=>{const c=ch.codePointAt(0);return String.fromCharCode(c===0x20AC?0x80:(c===0xB7?0xB7:(c<256?c:63)));}).join('');
+  const esc=t=>t.replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');
+  const pages=[];let cur,y;
+  const newPage=()=>{cur=[];pages.push(cur);y=PH-M;};
+  const need=h=>{if(y-h<M+18)newPage();};
+  const text=(str,x,yy,fs,b,c,right)=>{const xx=right?x-tw(str,fs,b):x;cur.push(c.join(' ')+' rg BT /'+(b?'F2':'F1')+' '+fs+' Tf '+xx.toFixed(1)+' '+yy.toFixed(1)+' Td ('+esc(bin(str))+') Tj ET');};
+  const rect=(x,yy,w,h,c)=>cur.push(c.join(' ')+' rg '+x+' '+yy.toFixed(1)+' '+w+' '+h+' re f');
+  const hline=(yy,c,wd)=>cur.push(c.join(' ')+' RG '+(wd||.5)+' w '+M+' '+yy.toFixed(1)+' m '+R+' '+yy.toFixed(1)+' l S');
+  const wrap=(t,fs,maxW,b)=>{const out=[];let line='';t.split(/\s+/).forEach(w=>{const cand=line?line+' '+w:w;if(line&&tw(cand,fs,b)>maxW){out.push(line);line=w;}else line=cand;});if(line)out.push(line);return out.length?out:[''];};
+  const heading=h=>{need(46);y-=18;text(h,M,y,13,true,GREEN);y-=6;hline(y,GREEN,1.2);y-=4;};
+  const bar=(left,label,amt,fill)=>{
+    need(30);rect(M,y-24,CW,22,fill);
+    const tc=fill===GREEN?WHITE:DARK,ac=fill===GREEN?WHITE:GREEN;
+    text(left,M+8,y-16,9.5,false,tc);
+    text(amt,R-8,y-16,11,true,ac,true);
+    text(label,R-8-tw(amt,11,true)-8,y-16,9.5,false,fill===GREEN?WHITE:GRAY,true);
+    y-=32;
+  };
+  newPage();
+  rect(0,PH-86,PW,86,GREEN);
+  text(tripTitle(true),M,PH-44,24,true,WHITE);
+  text(ppl.names.join(' & ')+'   ·   '+d.date,M,PH-66,10.5,false,WHITE);
+  y=PH-86-8;
+  heading('1. Daily split ('+splitLabel()+')');
+  d.days.forEach(x=>{
+    need(70);y-=16;
+    text(x.label,M,y,11,true,DARK);if(mode!=='GBP')text('rate '+x.rate+' per £1',R,y,9,false,GRAY,true);y-=5;
+    x.items.forEach(i=>{
+      const ls=wrap(i.d,10,CW-90,false),h=ls.length*13+7;need(h+2);
+      const top=y;ls.forEach((l,n)=>text(l,M+6,top-12-n*13,10,false,DARK));
+      text(E(i.a),R-6,top-12,10,false,DARK,true);
+      y=top-h;hline(y,RULE,.4);
+    });
+    y-=4;bar('Day total '+E(x.total)+'    Each '+E(x.half),'Each pays',P(x.share),LIGHT);y+=2;
+  });
+  if(!d.days.length){y-=16;text('No spends logged.',M,y,10,false,GRAY);y-=8;}
+  y-=4;bar('Total spent '+E(d.totE),'Each person\'s shares',P(d.totG),GREEN);
+  heading('2. Trip Tab (paid by '+ppl.picker+')');
+  d.tabItems.forEach(i=>{
+    const ls=wrap(i.desc,10,CW-90,false),sub=i.eur!==null,h=ls.length*13+(sub?11:0)+7;need(h+2);
+    const top=y;ls.forEach((l,n)=>text(l,M+6,top-12-n*13,10,false,DARK));
+    if(sub)text(E(i.eur)+' at '+i.rate+' per £1',M+6,top-12-ls.length*13+1,8.5,false,GRAY);
+    text(P(i.gbp),R-6,top-12,10,false,DARK,true);
+    y=top-h;hline(y,RULE,.4);
+  });
+  if(!d.tabItems.length){y-=16;text('No entries.',M,y,10,false,GRAY);y-=8;}
+  y-=4;bar(ppl.debtor+' owes '+ppl.picker+' for the Trip Tab','Total',P(d.tabTotal),GREEN);
+  if(d.rp){
+    heading('3. Repayments to '+ppl.picker);
+    d.rp.items.forEach(i=>{
+      const ls=wrap(i.date+'  '+i.m+(i.n?' - '+i.n:''),10,CW-90,false),h=ls.length*13+11+7;need(h+2);
+      const top=y;ls.forEach((l,n)=>text(l,M+6,top-12-n*13,10,false,DARK));
+      text('balance after: '+P(i.bal),M+6,top-12-ls.length*13+1,8.5,false,GRAY);
+      text(P(i.a),R-6,top-12,10,false,DARK,true);
+      y=top-h;hline(y,RULE,.4);
+    });
+    if(!d.rp.items.length){y-=16;text('No repayments logged yet.',M,y,10,false,GRAY);y-=8;}
+    y-=4;bar('Owed '+P(d.rp.final)+'    Repaid '+P(d.rp.paid),d.rp.bal>0.004?'Still owed':(d.rp.bal<-0.004?'Overpaid':'Balance'),P(Math.abs(d.rp.bal)),GREEN);
+  }
+  heading((d.rp?'4':'3')+'. Summary');
+  const rowsS=[['Each person\'s share of the daily split',P(d.totG)],[ppl.debtor+' owes '+ppl.picker+' for the Trip Tab',P(d.tabTotal)]];
+  if(d.rp)rowsS.push(['After repayments',d.rp.bal>0.004?'Still owed '+P(d.rp.bal):(d.rp.bal<-0.004?'Overpaid '+P(-d.rp.bal):'Fully repaid')]);
+  need(20+rowsS.length*20);rect(M,y-(14+rowsS.length*20),CW,12+rowsS.length*20,LIGHT);
+  rowsS.forEach((r,i)=>{text(r[0],M+10,y-22-i*20,10.5,false,DARK);text(r[1],R-10,y-22-i*20,11.5,true,GREEN,true);});
+  y-=24+rowsS.length*20;
+  pages.forEach((pg,i)=>{
+    cur=pg;
+    const f='Page '+(i+1)+' of '+pages.length;
+    text(tripTitle()+'  ·  '+ppl.names.join(' & '),M,24,8,false,GRAY);
+    text(f,R,24,8,false,GRAY,true);
+  });
+  let out='%PDF-1.4\n';const offs=[];
+  const add=(n,body)=>{offs[n]=out.length;out+=n+' 0 obj\n'+body+'\nendobj\n';};
+  add(1,'<< /Type /Catalog /Pages 2 0 R >>');
+  add(2,'<< /Type /Pages /Kids ['+pages.map((_,i)=>(5+2*i)+' 0 R').join(' ')+'] /Count '+pages.length+' >>');
+  add(3,'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+  add(4,'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  pages.forEach((c,i)=>{
+    const st=c.join('\n');
+    add(5+2*i,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+PW+' '+PH+'] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents '+(6+2*i)+' 0 R >>');
+    add(6+2*i,'<< /Length '+st.length+' >>\nstream\n'+st+'\nendstream');
+  });
+  const N=4+2*pages.length,xr=out.length;
+  out+='xref\n0 '+(N+1)+'\n0000000000 65535 f \n';
+  for(let n=1;n<=N;n++)out+=String(offs[n]).padStart(10,'0')+' 00000 n \n';
+  out+='trailer\n<< /Size '+(N+1)+' /Root 1 0 R >>\nstartxref\n'+xr+'\n%%EOF';
+  const u=new Uint8Array(out.length);
+  for(let i=0;i<out.length;i++)u[i]=out.charCodeAt(i)&255;
+  return new Blob([u],{type:'application/pdf'});
+}
+let dl;
+async function initDl(){
+  if(dl!==undefined)return;
+  try{dl=(window.claude&&claude.use)?await claude.use('downloads'):null;}catch(e){dl=null;}
+  try{
+    const tf=new File(['x'],'a.pdf',{type:'application/pdf'});
+    if(navigator.canShare&&navigator.canShare({files:[tf]}))$('shareBtn').hidden=false;
+  }catch(e){}
+}
+function downloadBlob(blob){
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=pdfName();document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
+$('pdfBtn').onclick=async()=>{
+  try{
+    const blob=makePdf();
+    if(dl){await dl.save({filename:pdfName(),data:blob});$('repNote').textContent='PDF saved.';}
+    else{downloadBlob(blob);$('repNote').textContent='PDF download started. If nothing appears in your Downloads, try Share PDF or Print / Save as PDF.';}
+  }catch(e){
+    $('repNote').textContent=(e&&e.code==='declined')?'Download cancelled.':'Couldn\'t save the PDF ('+((e&&(e.code||e.message))||'unknown error')+'). Try Print / Save as PDF or Copy report text.';
+  }
+};
+$('shareBtn').onclick=async()=>{
+  try{
+    const f=new File([makePdf()],pdfName(),{type:'application/pdf'});
+    await navigator.share({files:[f],title:tripTitle()});
+  }catch(e){if(!e||e.name!=='AbortError')$('repNote').textContent='Sharing isn\'t available here.';}
+};
+$('printBtn').onclick=()=>{
+  try{window.print();}catch(e){$('repNote').textContent='Printing isn\'t available here.';}
+};
+$('repCopy').onclick=async()=>{
+  $('repCopy').textContent=(await copyText(reportText()))?'Copied ✓':'Select the text above instead';
+  setTimeout(()=>$('repCopy').textContent='Copy report text',2200);
+};
+$('clearBtn').onclick=()=>{
+  const w=(rp.final!==null&&rBal()>0.004)?'Warning: '+ppl.picker+' is still owed £'+rBal().toFixed(2)+' in repayments.':(rp.final===null&&tSum()>0?'Warning: the Trip Tab has not been finalised or repaid.':'');
+  $('clearWarn').textContent=w;$('clearConfirm').hidden=false;$('clearBtn').hidden=true;$('clearNote').textContent='';};
+$('clearNo').onclick=()=>{$('clearConfirm').hidden=true;$('clearBtn').hidden=false;};
+$('clearYes').onclick=()=>{
+  try{['robsplit-v2','robtab-v1','robrepay-v1','robsplit-mode','robsplit-country','robsplit-people'].forEach(b=>localStorage.removeItem(keyFor(trips.current,b)));}catch(e){}
+  trips.list=trips.list.filter(x=>x.id!==trips.current);
+  if(trips.list.length)trips.current=trips.list[trips.list.length-1].id;
+  else{const id='t'+Date.now();trips.list.push({id:id,name:'New trip'});trips.current=id;}
+  saveTrips();location.reload();
+};
+function show(v){
+  $('viewDaily').hidden=v!=='daily';$('viewTab').hidden=v!=='tab';$('viewRep').hidden=v!=='rep';$('viewStart').hidden=v!=='start';$('navCard').hidden=v==='start';
+  $('navDaily').className=v==='daily'?'':'ghost';$('navTab').className=v==='tab'?'':'ghost';$('navRep').className=v==='rep'?'':'ghost';
+  if(v==='tab')renderTab();
+  if(v==='rep'){renderRep();initDl();}
+  window.scrollTo(0,0);
+}
+$('navRep').onclick=()=>show('rep');
+// ---- Euro / Pound trip choice ----
+function hasData(){return Object.keys(data.days).some(k=>data.days[k].items.length)||tab.items.length>0||rp.final!==null;}
+function applyMode(){
+  const g=mode==='GBP';
+  $('rateWrap').hidden=g;
+  $('amt').placeholder=(g?'£':'€')+' 0.00';
+  $('tCur').hidden=g;if(g)$('tCur').value='GBP';
+  if(ppl.picker){$('tabNote').textContent='Things '+ppl.picker+' paid for, owed by '+ppl.debtor+', outside the daily split.';$('rpTitle').textContent='Repayments to '+ppl.picker;}
+  $('tripType').textContent=mode?curTrip().name+'  ·  '+(g?'Pound trip (£)':'Euro trip (€ at the Monzo rate)'):'';
+  render();renderTab();
+}
+function setMode(m){
+  mode=m;try{localStorage.setItem(K('robsplit-mode'),m);}catch(e){}
+  if(m==='GBP'){$('country').value='United Kingdom';syncCountryUI();saveCountry();}
+  applyMode();show('daily');
+}
+function tripPicker(id){try{const p=JSON.parse(localStorage.getItem(keyFor(id,'robsplit-people')));if(p&&p.picker)return p.picker;}catch(e){}return 'Rob';}
+function tripBalance(id){
+  try{const r=JSON.parse(localStorage.getItem(keyFor(id,'robrepay-v1')));
+    if(r&&r.final!==null&&r.final!==undefined)return Math.round((r.final-r.items.reduce((t,i)=>t+i.a,0))*100)/100;}catch(e){}
+  return null;
+}
+function renderTrips(){
+  const l=$('tripList');l.innerHTML='';
+  trips.list.forEach(t=>{
+    const r=document.createElement('div');r.className='item';
+    const d=document.createElement('span');d.className='desc';
+    const n=document.createElement('div');n.style.fontWeight='600';n.textContent=t.name+(t.id===trips.current?'  (current)':'');
+    const sub=document.createElement('div');sub.className='note';sub.style.margin='0';
+    const bal=tripBalance(t.id);
+    sub.textContent=bal===null?'':(bal>0.004?'Still owed to '+tripPicker(t.id)+': £'+bal.toFixed(2):'Repaid in full');
+    d.append(n,sub);r.append(d);
+    if(t.id!==trips.current){
+      const b=document.createElement('button');b.className='ghost';b.textContent='Open';
+      b.onclick=()=>{trips.current=t.id;saveTrips();location.reload();};
+      r.append(b);
+    }
+    l.appendChild(r);
+  });
+  $('tripListCard').hidden=!mode&&trips.list.length===1;
+  $('startBack').hidden=!mode;
+  if(!$('newPeople').value&&ppl.names.length){$('newPeople').value=ppl.names.join(', ');fillSelects();$('selPayer').value=ppl.payer;$('selPicker').value=ppl.picker;$('selDebtor').value=ppl.debtor;}
+}
+const parseNames=()=>{const out=[];$('newPeople').value.split(',').map(x=>x.trim()).filter(Boolean).forEach(n=>{if(!out.some(m=>m.toLowerCase()===n.toLowerCase()))out.push(n);});return out;};
+function fillSelects(){
+  const ns=parseNames();
+  [['selPayer',0],['selPicker',1],['selDebtor',0]].forEach(a=>{
+    const el=$(a[0]),prev=el.value;el.innerHTML='';
+    ns.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;el.appendChild(o);});
+    el.value=ns.includes(prev)?prev:(ns[a[1]]||ns[0]||'');
+  });
+}
+$('newPeople').addEventListener('input',fillSelects);
+function startTrip(m){
+  const nm=$('newName').value.trim(),ns=parseNames();
+  if(ns.length<2){$('startErr').textContent='Add at least two names, separated by commas.';return;}
+  const pk=$('selPicker').value,db=$('selDebtor').value;
+  if(pk===db){$('startErr').textContent='The person who picks up the Trip Tab and the person who owes it must be different.';return;}
+  $('startErr').textContent='';
+  const pp={names:ns,payer:$('selPayer').value,picker:pk,debtor:db};
+  if(!mode&&!hasData()){
+    const t=curTrip();t.name=nm||(t.name==='New trip'?'Trip 1':t.name);saveTrips();
+    ppl=pp;savePeople();setMode(m);return;
+  }
+  const id='t'+Date.now();
+  trips.list.push({id:id,name:nm||('Trip '+(trips.list.length+1))});trips.current=id;saveTrips();
+  try{
+    localStorage.setItem(keyFor(id,'robsplit-people'),JSON.stringify(pp));
+    localStorage.setItem(keyFor(id,'robsplit-mode'),m);
+    localStorage.setItem(keyFor(id,'robsplit-country'),m==='GBP'?'United Kingdom':'');
+  }catch(e){}
+  location.reload();
+}
+$('startEur').onclick=()=>startTrip('EUR');
+$('startGbp').onclick=()=>startTrip('GBP');
+$('startBack').onclick=()=>show('daily');
+$('tripChange').onclick=()=>{renderTrips();show('start');};
+if(!mode&&hasData()){mode='EUR';try{localStorage.setItem(K('robsplit-mode'),'EUR');}catch(e){}}
+applyMode();
+if(!mode){renderTrips();show('start');}
+render();
+</script>
+<script>
+if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
+}
+</script>
+</body>
+</html>
