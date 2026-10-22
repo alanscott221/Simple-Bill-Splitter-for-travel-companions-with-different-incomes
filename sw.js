@@ -1,5 +1,5 @@
 // Simple offline cache. Change CACHE name (v1 -> v2) whenever you update index.html.
-const CACHE='trip-split-v5';
+const CACHE='trip-split-v6';
 const FILES=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png','icon-maskable-512.png'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting()));

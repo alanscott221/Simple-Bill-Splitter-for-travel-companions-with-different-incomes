@@ -20,7 +20,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 .card{max-width:440px;margin:0 auto 14px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
 h1{font-size:1.25rem;margin:0 0 12px}h2{font-size:1rem;margin:0 0 10px}
 label{display:block;font-size:.8rem;color:var(--muted);margin:10px 0 4px}
-input,select{width:100%;box-sizing:border-box;font-size:1.1rem;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text)}
+input,select,textarea{width:100%;box-sizing:border-box;font-size:1.1rem;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text)}
 .row{display:flex;gap:8px}.row input:first-child{flex:0 0 32%}
 button{font-size:1rem;padding:11px 14px;border-radius:10px;border:0;background:var(--accent);color:#fff;font-weight:600}
 button.ghost{background:none;border:1px solid var(--accent);color:var(--accent)}
@@ -164,6 +164,19 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
   <p class="note">Everything in this app is stored only on this device, in this browser.</p>
 </div>
 <div class="card">
+  <h2>Backup &amp; move data</h2>
+  <p class="note" style="margin:0 0 6px">Save all your trips to a file, or load a backup made on another device. Importing adds trips and never overwrites the ones you already have.</p>
+  <button class="add" id="bkExport">Export all trips</button>
+  <button class="ghost add" id="bkShare" hidden>Share backup file</button>
+  <button class="ghost add" id="bkCopy">Copy backup text</button>
+  <label for="bkFile">Import: choose a backup file</label>
+  <input id="bkFile" type="file" accept=".json,application/json,text/plain">
+  <label for="bkText">…or paste the backup text here</label>
+  <textarea id="bkText" rows="4" style="font-size:.85rem"></textarea>
+  <button class="add" id="bkImport">Import trips</button>
+  <p class="note" id="bkNote"></p>
+</div>
+<div class="card">
   <h2>How to use this app</h2>
   <details class="gd" open><summary>What is it for?</summary><div>
     <p>It splits the cost of a trip between friends when one person pays by card abroad and the others repay in their home currency at the exchange rate the card used (Monzo's daily Mastercard rate), or at a rate they agree. It also handles big costs, like flights, that one person covers up front and the other repays gradually.</p>
@@ -194,8 +207,11 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
     <p>You can keep several trips side by side. Use the <b>Trips</b> button to switch, or start another. The names and roles are fixed once a trip starts, so if someone joins midway, start a new trip.</p>
     <p><b>Delete this trip</b> (under Finish trip) removes only that trip. Save its PDF first.</p></div></details>
   <details class="gd"><summary>Your data and privacy</summary><div>
-    <p>Nothing is uploaded anywhere. Your trips are stored in this browser on this device, and they stay until you delete them or clear the browser's data. Other devices have their own separate trips, and there is no syncing.</p>
-    <p>Because of that, save a PDF or copy the report text as a backup when a trip ends.</p></div></details>
+    <p>Nothing is uploaded anywhere. Your trips are stored in this browser on this device, and they stay until you delete them or clear the browser's data. Other devices have their own separate trips, with no automatic syncing.</p>
+    <p>Because of that, export a backup (in Settings above) and save a PDF when a trip ends.</p></div></details>
+  <details class="gd"><summary>Backup and moving data</summary><div>
+    <p><b>Export all trips</b> saves every trip to a small file. On another device, choose that file under Import, or paste its text, then tap <b>Import trips</b>. Imported trips are added alongside any existing ones. Importing the same file twice adds the trips twice; use <b>Delete this trip</b> to remove extras.</p>
+    <p>The file contains your trip details, so keep it private.</p></div></details>
   <details class="gd"><summary>Tips</summary><div>
     <ul><li>Log spends as they happen, not at the end of the day.</li>
     <li>Monzo's rate changes daily, so check it each day, or agree a fixed rate with your friends.</li>
@@ -648,10 +664,79 @@ function show(v){
   $('navDaily').className=v==='daily'?'':'ghost';$('navTab').className=v==='tab'?'':'ghost';$('navRep').className=v==='rep'?'':'ghost';$('navHelp').className=v==='help'?'':'ghost';
   if(v==='tab')renderTab();
   if(v==='rep'){renderRep();initDl();}
+  if(v==='help'){initDl().then(()=>{$('bkShare').hidden=$('shareBtn').hidden;});}
   window.scrollTo(0,0);
 }
 $('navRep').onclick=()=>show('rep');
 $('navHelp').onclick=()=>show('help');
+// ---- Backup / import ----
+const BK_KEYS=['robsplit-v2','robtab-v1','robrepay-v1','robsplit-mode','robsplit-country','robsplit-people'];
+function buildBackup(){
+  const out={app:'trip-split',version:1,exported:new Date().toISOString(),trips:[]};
+  trips.list.forEach(t=>{
+    const d={};
+    BK_KEYS.forEach(b=>{
+      let v=null;try{v=localStorage.getItem(keyFor(t.id,b));}catch(e){}
+      if(t.id===trips.current){if(b==='robsplit-mode'&&mode)v=mode;if(b==='robsplit-people'&&ppl.names.length)v=JSON.stringify(ppl);}
+      if(v!==null)d[b]=v;
+    });
+    if(Object.keys(d).length)out.trips.push({id:t.id,name:t.name,data:d});
+  });
+  return JSON.stringify(out,null,1);
+}
+function importBackup(txt){
+  let obj;try{obj=JSON.parse(txt);}catch(e){return 'That doesn\'t look like a Trip Split backup.';}
+  if(!obj||obj.app!=='trip-split'||!Array.isArray(obj.trips))return 'That doesn\'t look like a Trip Split backup.';
+  const items=obj.trips.filter(t=>t&&t.data);
+  if(!items.length)return 'The backup contained no trips.';
+  if(!mode&&!hasData())trips.list=trips.list.filter(x=>x.id!==trips.current);
+  const stamp=Date.now(),first=trips.list.length;
+  try{
+    items.forEach((t,i)=>{
+      const id='t'+(stamp+i),d=Object.assign({},t.data);
+      if(!d['robsplit-people'])d['robsplit-people']=JSON.stringify({names:['Person 1','Person 2'],payer:'Person 1',picker:'Person 2',debtor:'Person 1'});
+      if(!d['robsplit-mode'])d['robsplit-mode']='EUR';
+      BK_KEYS.forEach(b=>{if(d[b]!==undefined)localStorage.setItem(keyFor(id,b),d[b]);});
+      trips.list.push({id:id,name:t.name||('Imported trip '+(i+1))});
+    });
+  }catch(e){return 'Couldn\'t save the trips (storage is full or blocked).';}
+  trips.current=trips.list[first].id;saveTrips();location.reload();
+  return '';
+}
+const bkName=()=>'trip-split-backup-'+new Date().toISOString().slice(0,10)+'.json';
+$('bkExport').onclick=async()=>{
+  await initDl();
+  const blob=new Blob([buildBackup()],{type:'application/json'});
+  try{
+    if(dl){await dl.save({filename:bkName(),data:blob});$('bkNote').textContent='Backup saved.';}
+    else{
+      const url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;a.download=bkName();document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),4000);
+      $('bkNote').textContent='Backup download started. If nothing appears, use Share or Copy backup text.';
+    }
+  }catch(e){$('bkNote').textContent=(e&&e.code==='declined')?'Cancelled.':'Couldn\'t save the file ('+((e&&(e.code||e.message))||'unknown error')+'). Use Copy backup text instead.';}
+};
+$('bkShare').onclick=async()=>{
+  try{await navigator.share({files:[new File([buildBackup()],bkName(),{type:'application/json'})],title:'Trip Split backup'});}
+  catch(e){if(!e||e.name!=='AbortError')$('bkNote').textContent='Sharing isn\'t available here. Use Copy backup text.';}
+};
+$('bkCopy').onclick=async()=>{
+  const t=buildBackup();
+  if(await copyText(t))$('bkNote').textContent='Backup text copied. Paste it somewhere safe, such as a note.';
+  else{$('bkText').value=t;$('bkNote').textContent='Select and copy the text in the box below.';}
+};
+$('bkFile').addEventListener('change',()=>{
+  const f=$('bkFile').files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{$('bkText').value=String(r.result);$('bkNote').textContent='File loaded. Tap Import trips.';};
+  r.readAsText(f);
+});
+$('bkImport').onclick=()=>{
+  const t=$('bkText').value.trim();
+  if(!t){$('bkNote').textContent='Choose a backup file or paste the backup text first.';return;}
+  const m=importBackup(t);if(m)$('bkNote').textContent=m;
+};
 // ---- Settings ----
 const DEFAULT_RATE_URL='https://monzo.com/ecb-rates';
 let cfg={rateUrl:DEFAULT_RATE_URL};

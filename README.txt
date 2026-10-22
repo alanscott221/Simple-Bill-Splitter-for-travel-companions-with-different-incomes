@@ -8,5 +8,5 @@ Your address will look like https://YOURNAME.github.io/REPOSITORY/
 
 Install: Android Chrome menu > Install app. iPad/iPhone Safari: Share > Add to Home Screen.
 
-Updating later: upload the new index.html, then edit sw.js and raise the version (trip-split-v5 -> v6)
+Updating later: upload the new index.html, then edit sw.js and raise the version (trip-split-v6 -> v7)
 so devices pick up the update. Your data is stored on each device, per web address.
