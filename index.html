@@ -46,6 +46,7 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
 .rf span:last-child{font-weight:700;white-space:nowrap}
 .rbox{margin-top:8px;padding:12px;border-radius:12px;background:var(--bg)}
 .rbox .rs{display:flex;justify-content:space-between;gap:8px;padding:4px 0;font-weight:600}
+.gd{border-bottom:1px solid var(--line)}.gd summary{font-weight:600;padding:12px 0;cursor:pointer}.gd div{padding:0 0 12px;font-size:.93rem;line-height:1.45}.gd p{margin:0 0 8px}.gd ol,.gd ul{margin:0 0 8px;padding-left:20px}
 [hidden]{display:none!important}
 @media print{.noprint{display:none!important}body{background:#fff!important;color:#000!important;padding:0!important}.card{background:#fff!important;border:0!important;color:#000!important}.daytxt{color:#000!important}.rf,.rbox{background:#eef3f1!important}.rtitle,.rh,.rf span:last-child{color:#0f7b5f!important}.rsub,.dh span+span{color:#555!important}.rr,.rh{border-color:#ccc!important}}
 .nav{padding:10px}.nav .btns button{padding:10px 4px;font-size:.85rem}
@@ -53,7 +54,7 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
 </style>
 </head>
 <body>
-<div class="card nav noprint" id="navCard"><div class="btns"><button id="navDaily">Daily split</button><button id="navTab" class="ghost">Trip Tab</button><button id="navRep" class="ghost">Finish trip</button></div></div>
+<div class="card nav noprint" id="navCard"><div class="btns"><button id="navDaily">Daily split</button><button id="navTab" class="ghost">Trip Tab</button><button id="navRep" class="ghost">Finish trip</button><button id="navHelp" class="ghost">Help</button></div></div>
 <div id="viewStart" hidden>
 <div class="card" id="tripListCard">
   <h1>Your trips</h1>
@@ -64,7 +65,7 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
   <label for="newName">Trip name</label>
   <input id="newName" type="text" placeholder="e.g. UK weekend" autocomplete="off">
   <label for="newPeople">Who's on the trip? (names, separated by commas)</label>
-  <input id="newPeople" type="text" placeholder="e.g. Al, Rob, Jools" autocomplete="off">
+  <input id="newPeople" type="text" placeholder="e.g. Sam, Alex, Jo" autocomplete="off">
   <label for="selPayer">Who pays by card? (the others repay them each day)</label>
   <select id="selPayer"></select>
   <label for="selPicker">Who picks up the Trip Tab? (pays for big deferred costs)</label>
@@ -74,9 +75,10 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
   <p class="note" id="startErr" style="color:#c0392b;font-weight:600"></p>
   <p class="note" style="margin:12px 0 4px;font-size:.9rem">What currency will you be spending in?</p>
   <button class="add" id="startEur">€ Euro trip</button>
-  <p class="note" style="margin:4px 0 10px">Spends in euros, converted to pounds at the Monzo (Mastercard) rate.</p>
+  <p class="note" style="margin:4px 0 10px">Spends in euros, converted to pounds at the Monzo (Mastercard) rate, or a rate you agree.</p>
   <button class="add" id="startGbp">£ Pound trip</button>
   <p class="note" style="margin:4px 0 0">Spends in pounds, so no rate or conversion is needed.</p>
+  <button class="ghost add" id="startHelp">How does this work?</button>
   <button class="ghost add" id="startBack" hidden>Back to current trip</button>
 </div>
 </div>
@@ -87,9 +89,10 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
   <label for="date">Day</label>
   <input id="date" type="date">
   <div id="rateWrap">
-  <label for="rate">Mastercard rate for this day (€ per £1)</label>
+  <label for="rate">Monzo (Mastercard) rate for this day (€ per £1)</label>
   <input id="rate" type="number" inputmode="decimal" step="0.0001">
-  <a class="link" href="https://monzo.com/ecb-rates" target="_blank" rel="noopener">Check today's Monzo rate →</a>
+  <a class="link" id="rateLink" href="https://monzo.com/ecb-rates" target="_blank" rel="noopener">Check today's Monzo rate →</a>
+  <p class="note" style="margin:8px 0 0">Not a Monzo user? Type an agreed rate instead.</p>
   </div>
 </div>
 <div class="card">
@@ -151,13 +154,63 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
   </div>
 </div>
 </div>
+<div id="viewHelp" hidden>
+<div class="card">
+  <h1>Settings &amp; guide</h1>
+  <label for="setRateUrl">Rate link (optional)</label>
+  <input id="setRateUrl" type="url" placeholder="https://…" autocomplete="off">
+  <p class="note">The page for checking the daily rate. It starts as Monzo's page. If you use a different card, paste its link here, or leave it empty to hide the button. You can also just type an agreed rate on the Daily split page.</p>
+  <button class="ghost add" id="setMonzo">Use Monzo's rate page</button>
+  <p class="note">Everything in this app is stored only on this device, in this browser.</p>
+</div>
+<div class="card">
+  <h2>How to use this app</h2>
+  <details class="gd" open><summary>What is it for?</summary><div>
+    <p>It splits the cost of a trip between friends when one person pays by card abroad and the others repay in their home currency at the exchange rate the card used (Monzo's daily Mastercard rate), or at a rate they agree. It also handles big costs, like flights, that one person covers up front and the other repays gradually.</p>
+    <p>It keeps two separate ledgers: the <b>Daily split</b> (everyday shared spending) and the <b>Trip Tab</b> (larger deferred costs). Right now it works in pounds (£) and euros (€).</p></div></details>
+  <details class="gd"><summary>Quick start</summary><div>
+    <ol><li>Tap <b>Trips</b>, then start a new trip. Enter a trip name, everyone's names separated by commas, who pays by card, who picks up the Trip Tab and who owes it. Choose a Euro or Pound trip.</li>
+    <li>On <b>Daily split</b>, add each shared spend as it happens.</li>
+    <li>On a euro trip, enter the Monzo (Mastercard) rate for that day, or an agreed rate.</li>
+    <li>The green banner shows what each person owes the card payer.</li>
+    <li>Use <b>Trip Tab</b> for big costs someone else paid up front, then log repayments.</li>
+    <li>At the end, open <b>Finish trip</b> for a report.</li></ol></div></details>
+  <details class="gd"><summary>Daily split</summary><div>
+    <p>Pick the day, then add each spend with a short description. Every spend is shared equally between all travellers.</p>
+    <p>On a euro trip, the day's total is divided by the number of travellers, then converted to pounds at that day's rate. The banner shows what each person (other than the card payer) owes. Each day keeps its own rate, so later changes never alter earlier days.</p>
+    <p>Wrong entry? Tap the ✕ beside it. Earlier days are listed under <b>All days</b>, with copy buttons.</p></div></details>
+  <details class="gd"><summary>Trip Tab</summary><div>
+    <p>For larger costs that one person pays up front and is repaid later. The person who pays is "the person who picks up the Trip Tab"; the person who repays is "the person who owes it". You choose both when you start the trip.</p>
+    <p>Add each item in £ or €. A euro item converts at the rate showing on the Daily split page at that moment, and keeps that rate. The tab is completely separate from the daily split.</p></div></details>
+  <details class="gd"><summary>Repayments</summary><div>
+    <p>When the tab is complete, tap <b>Finalise tab amount</b> to fix what is owed. Then log each repayment as it happens: bank transfer, cash, or buying a meal or drink (use its £ value). A running balance shows what is left.</p>
+    <p>If you change the tab after finalising, an <b>Update finalised amount</b> button appears.</p></div></details>
+  <details class="gd"><summary>Finish trip and reports</summary><div>
+    <p>Choose the country, then read the full report: every day and spend, the Trip Tab, repayments and totals. <b>Download PDF</b>, <b>Share PDF</b>, <b>Print / Save as PDF</b> and <b>Copy report text</b> are all there; which ones work depends on your device and browser.</p></div></details>
+  <details class="gd"><summary>Euro trips and Pound trips</summary><div>
+    <p><b>Euro trip:</b> spends are in euros and converted to pounds using Monzo's daily Mastercard rate, or a rate you agree.</p>
+    <p><b>Pound trip:</b> everything is in pounds, so there is no rate and no conversion.</p></div></details>
+  <details class="gd"><summary>Trips and people</summary><div>
+    <p>You can keep several trips side by side. Use the <b>Trips</b> button to switch, or start another. The names and roles are fixed once a trip starts, so if someone joins midway, start a new trip.</p>
+    <p><b>Delete this trip</b> (under Finish trip) removes only that trip. Save its PDF first.</p></div></details>
+  <details class="gd"><summary>Your data and privacy</summary><div>
+    <p>Nothing is uploaded anywhere. Your trips are stored in this browser on this device, and they stay until you delete them or clear the browser's data. Other devices have their own separate trips, and there is no syncing.</p>
+    <p>Because of that, save a PDF or copy the report text as a backup when a trip ends.</p></div></details>
+  <details class="gd"><summary>Tips</summary><div>
+    <ul><li>Log spends as they happen, not at the end of the day.</li>
+    <li>Monzo's rate changes daily, so check it each day, or agree a fixed rate with your friends.</li>
+    <li>Amounts are rounded to the penny for each day.</li>
+    <li>Install it from your browser menu (Install app or Add to Home Screen) to use it offline.</li></ul></div></details>
+  <button class="add" id="helpBack">Back</button>
+</div>
+</div>
 <div id="viewRep" hidden>
 <div class="card">
   <h1 class="noprint">Finish trip</h1>
   <p class="note noprint" style="margin:0 0 10px">Every day and spend from the daily split, plus the Trip Tab. Your logs are not changed or locked.</p>
   <div class="noprint">
     <label for="countrySel">Country for this trip</label>
-    <select id="countrySel"><option value="Italy">Italy</option><option value="Spain">Spain</option><option value="France">France</option><option value="Portugal">Portugal</option><option value="Greece">Greece</option><option value="Germany">Germany</option><option value="Netherlands">Netherlands</option><option value="Croatia">Croatia</option><option value="Malta">Malta</option><option value="Austria">Austria</option><option value="Switzerland">Switzerland</option><option value="Ireland">Ireland</option><option value="Turkey">Turkey</option><option value="Czech Republic">Czech Republic</option><option value="Poland">Poland</option><option value="United States">United States</option><option value="United Kingdom">United Kingdom</option><option value="England">England</option><option value="Scotland">Scotland</option><option value="Wales">Wales</option><option value="Northern Ireland">Northern Ireland</option><option value="__other">Other (type it in)…</option></select>
+    <select id="countrySel"><option value="">Choose a country…</option><option value="Italy">Italy</option><option value="Spain">Spain</option><option value="France">France</option><option value="Portugal">Portugal</option><option value="Greece">Greece</option><option value="Germany">Germany</option><option value="Netherlands">Netherlands</option><option value="Croatia">Croatia</option><option value="Malta">Malta</option><option value="Austria">Austria</option><option value="Switzerland">Switzerland</option><option value="Ireland">Ireland</option><option value="Turkey">Turkey</option><option value="Czech Republic">Czech Republic</option><option value="Poland">Poland</option><option value="United States">United States</option><option value="United Kingdom">United Kingdom</option><option value="England">England</option><option value="Scotland">Scotland</option><option value="Wales">Wales</option><option value="Northern Ireland">Northern Ireland</option><option value="__other">Other (type it in)…</option></select>
     <input id="country" type="text" placeholder="Type the country" autocomplete="off" hidden style="margin-top:8px">
   </div>
   <div id="repView"></div>
@@ -191,7 +244,7 @@ let trips=null;
 try{const t=localStorage.getItem('robtrips-v1');if(t)trips=JSON.parse(t);}catch(e){}
 if(!trips){
   let nm='New trip';
-  try{if(localStorage.getItem('robsplit-v2')!==null){const c=localStorage.getItem('robsplit-country');nm=(c&&c.trim()?c.trim():'Italy')+' trip';}}catch(e){}
+  try{if(localStorage.getItem('robsplit-v2')!==null){const c=localStorage.getItem('robsplit-country');nm=(c&&c.trim()?c.trim():'My')+' trip';}}catch(e){}
   trips={current:'t1',list:[{id:'t1',name:nm}]};
   try{localStorage.setItem('robtrips-v1',JSON.stringify(trips));}catch(e){}
 }
@@ -204,7 +257,6 @@ let ppl={names:[],payer:'',picker:'',debtor:''};
 try{
   const t=localStorage.getItem(PKEY);
   if(t)ppl=JSON.parse(t);
-  else if(localStorage.getItem(K('robsplit-v2'))!==null||localStorage.getItem(K('robsplit-mode'))!==null)ppl={names:['Al','Rob'],payer:'Al',picker:'Rob',debtor:'Al'};
 }catch(e){}
 const savePeople=()=>{try{localStorage.setItem(PKEY,JSON.stringify(ppl));}catch(e){}};
 const N=()=>Math.max(2,ppl.names.length);
@@ -274,7 +326,7 @@ $('copyBtn').onclick=async()=>{
   setTimeout(()=>$('copyBtn').textContent='Copy day summary',1800);
 };
 
-// ---- Repayments to Rob ----
+// ---- Repayments ----
 const RKEY=K('robrepay-v1');
 let rp={final:null,items:[]};
 try{const t=localStorage.getItem(RKEY);if(t)rp=JSON.parse(t);}catch(e){}
@@ -325,7 +377,7 @@ $('rpAdd').onclick=()=>{
   rp.items.push({d:$('rpDate').value||today(),m:$('rpMethod').value,n:$('rpNote').value.trim(),a:Math.round(a*100)/100});
   $('rpAmt').value='';$('rpNote').value='';rsave();renderRepay();
 };
-// ---- Rob Trip Tab (separate log; only shares the € rate) ----
+// ---- Trip Tab (separate log; only shares the exchange rate) ----
 const TKEY=K('robtab-v1');
 let tab=null;
 try{const t=localStorage.getItem(TKEY);if(t)tab=JSON.parse(t);}catch(e){}
@@ -353,7 +405,7 @@ function renderTab(){
   $('tResult').classList.toggle('idle',!tab.items.length);
   $('tText').textContent=tab.items.length?tTxt():'';
   renderRepay();
-  $('tNote').textContent=$('tCur').value==='EUR'?'€ entries convert at the daily Monzo rate currently set ('+curRate()+') and keep that rate.':'';
+  $('tNote').textContent=$('tCur').value==='EUR'?'€ entries convert at the daily Monzo / agreed rate currently set ('+curRate()+') and keep that rate.':'';
 }
 $('tCur').addEventListener('change',renderTab);
 $('tAdd').onclick=()=>{
@@ -375,8 +427,8 @@ function tripTitle(cap){const c=($('country').value||'').trim();return cap?(c?c+
 function pdfName(){const c=($('country').value||'').trim().replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'');return (c||'Trip')+'-trip-report.pdf';}
 const COUNTRIES=['Italy', 'Spain', 'France', 'Portugal', 'Greece', 'Germany', 'Netherlands', 'Croatia', 'Malta', 'Austria', 'Switzerland', 'Ireland', 'Turkey', 'Czech Republic', 'Poland', 'United States','United Kingdom','England','Scotland','Wales','Northern Ireland'];
 const saveCountry=()=>{try{localStorage.setItem(K('robsplit-country'),$('country').value);}catch(e){}};
-function syncCountryUI(){const v=$('country').value,known=COUNTRIES.includes(v);$('countrySel').value=known?v:'__other';$('country').hidden=known;}
-try{const c=localStorage.getItem(K('robsplit-country'));$('country').value=c===null?'Italy':c;}catch(e){$('country').value='Italy';}
+function syncCountryUI(){const v=$('country').value,known=COUNTRIES.includes(v)||v==='';$('countrySel').value=v===''?'':(known?v:'__other');$('country').hidden=known;}
+try{const c=localStorage.getItem(K('robsplit-country'));$('country').value=c===null?'':c;}catch(e){$('country').value='';}
 syncCountryUI();
 $('countrySel').addEventListener('change',()=>{
   const v=$('countrySel').value;
@@ -592,13 +644,26 @@ $('clearYes').onclick=()=>{
   saveTrips();location.reload();
 };
 function show(v){
-  $('viewDaily').hidden=v!=='daily';$('viewTab').hidden=v!=='tab';$('viewRep').hidden=v!=='rep';$('viewStart').hidden=v!=='start';$('navCard').hidden=v==='start';
-  $('navDaily').className=v==='daily'?'':'ghost';$('navTab').className=v==='tab'?'':'ghost';$('navRep').className=v==='rep'?'':'ghost';
+  $('viewDaily').hidden=v!=='daily';$('viewTab').hidden=v!=='tab';$('viewRep').hidden=v!=='rep';$('viewStart').hidden=v!=='start';$('viewHelp').hidden=v!=='help';$('navCard').hidden=(v==='start'||!mode);
+  $('navDaily').className=v==='daily'?'':'ghost';$('navTab').className=v==='tab'?'':'ghost';$('navRep').className=v==='rep'?'':'ghost';$('navHelp').className=v==='help'?'':'ghost';
   if(v==='tab')renderTab();
   if(v==='rep'){renderRep();initDl();}
   window.scrollTo(0,0);
 }
 $('navRep').onclick=()=>show('rep');
+$('navHelp').onclick=()=>show('help');
+// ---- Settings ----
+const DEFAULT_RATE_URL='https://monzo.com/ecb-rates';
+let cfg={rateUrl:DEFAULT_RATE_URL};
+try{const t=localStorage.getItem('robsplit-settings');if(t)cfg=Object.assign(cfg,JSON.parse(t));}catch(e){}
+function applyCfg(){const u=(cfg.rateUrl||'').trim(),ok=/^https?:\/\//i.test(u);$('rateLink').hidden=!ok;if(ok)$('rateLink').href=u;}
+function saveCfg(){try{localStorage.setItem('robsplit-settings',JSON.stringify(cfg));}catch(e){}applyCfg();}
+$('setRateUrl').value=cfg.rateUrl||'';
+$('setRateUrl').addEventListener('input',()=>{cfg.rateUrl=$('setRateUrl').value.trim();saveCfg();});
+$('setMonzo').onclick=()=>{cfg.rateUrl='https://monzo.com/ecb-rates';$('setRateUrl').value=cfg.rateUrl;saveCfg();};
+$('startHelp').onclick=()=>show('help');
+$('helpBack').onclick=()=>show(mode?'daily':'start');
+applyCfg();
 // ---- Euro / Pound trip choice ----
 function hasData(){return Object.keys(data.days).some(k=>data.days[k].items.length)||tab.items.length>0||rp.final!==null;}
 function applyMode(){
@@ -607,7 +672,7 @@ function applyMode(){
   $('amt').placeholder=(g?'£':'€')+' 0.00';
   $('tCur').hidden=g;if(g)$('tCur').value='GBP';
   if(ppl.picker){$('tabNote').textContent='Things '+ppl.picker+' paid for, owed by '+ppl.debtor+', outside the daily split.';$('rpTitle').textContent='Repayments to '+ppl.picker;}
-  $('tripType').textContent=mode?curTrip().name+'  ·  '+(g?'Pound trip (£)':'Euro trip (€ at the Monzo rate)'):'';
+  $('tripType').textContent=mode?curTrip().name+'  ·  '+(g?'Pound trip (£)':'Euro trip (€ at the Monzo / agreed rate)'):'';
   render();renderTab();
 }
 function setMode(m){
@@ -615,7 +680,7 @@ function setMode(m){
   if(m==='GBP'){$('country').value='United Kingdom';syncCountryUI();saveCountry();}
   applyMode();show('daily');
 }
-function tripPicker(id){try{const p=JSON.parse(localStorage.getItem(keyFor(id,'robsplit-people')));if(p&&p.picker)return p.picker;}catch(e){}return 'Rob';}
+function tripPicker(id){try{const p=JSON.parse(localStorage.getItem(keyFor(id,'robsplit-people')));if(p&&p.picker)return p.picker;}catch(e){}return 'the Trip Tab holder';}
 function tripBalance(id){
   try{const r=JSON.parse(localStorage.getItem(keyFor(id,'robrepay-v1')));
     if(r&&r.final!==null&&r.final!==undefined)return Math.round((r.final-r.items.reduce((t,i)=>t+i.a,0))*100)/100;}catch(e){}
