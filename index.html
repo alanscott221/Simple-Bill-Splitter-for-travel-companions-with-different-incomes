@@ -56,6 +56,12 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
 <body>
 <div class="card nav noprint" id="navCard"><div class="btns"><button id="navDaily">Daily split</button><button id="navTab" class="ghost">Trip Tab</button><button id="navRep" class="ghost">Finish trip</button><button id="navHelp" class="ghost">Help</button></div></div>
 <div id="viewStart" hidden>
+<div class="card" id="introCard">
+  <h1>Welcome</h1>
+  <p class="note" style="margin:0 0 8px;font-size:.93rem">Split trip costs fairly, even when one person pays by card and the others repay in their own currency.</p>
+  <ol class="note" style="margin:0 0 12px;padding-left:20px;font-size:.9rem;line-height:1.45"><li>Add everyone and say who pays by card.</li><li>Log shared spends each day. The app works out what each person owes, converted at your exchange rate.</li><li>Use the Trip Tab for big costs paid up front, then log repayments over time.</li></ol>
+  <button class="add" id="sampleBtn">Try a sample trip</button>
+</div>
 <div class="card" id="tripListCard">
   <h1>Your trips</h1>
   <div id="tripList"></div>
@@ -68,16 +74,17 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
   <input id="newPeople" type="text" placeholder="e.g. Sam, Alex, Jo" autocomplete="off">
   <label for="selPayer">Who pays by card? (the others repay them each day)</label>
   <select id="selPayer"></select>
-  <label for="selPicker">Who picks up the Trip Tab? (pays for big deferred costs)</label>
+  <label for="selPicker">Who pays big costs up front (the "Trip Tab")?</label>
   <select id="selPicker"></select>
-  <label for="selDebtor">Who owes the Trip Tab?</label>
+  <label for="selDebtor">Who repays those big costs later?</label>
   <select id="selDebtor"></select>
   <p class="note" id="startErr" style="color:#c0392b;font-weight:600"></p>
-  <p class="note" style="margin:12px 0 4px;font-size:.9rem">What currency will you be spending in?</p>
-  <button class="add" id="startEur">€ Euro trip</button>
-  <p class="note" style="margin:4px 0 10px">Spends in euros, converted to pounds at the Monzo (Mastercard) rate, or a rate you agree.</p>
-  <button class="add" id="startGbp">£ Pound trip</button>
-  <p class="note" style="margin:4px 0 0">Spends in pounds, so no rate or conversion is needed.</p>
+  <label for="homeSel">Your home currency (what people repay in)</label>
+  <select id="homeSel"></select>
+  <label for="tripSel">Currency spent on the trip</label>
+  <select id="tripSel"></select>
+  <p class="note" style="margin:6px 0 10px">If they differ, you enter an exchange rate for each day, such as Monzo's Mastercard rate or a rate you agree.</p>
+  <button class="add" id="startGo">Start trip</button>
   <button class="ghost add" id="startHelp">How does this work?</button>
   <button class="ghost add" id="startBack" hidden>Back to current trip</button>
 </div>
@@ -89,7 +96,7 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
   <label for="date">Day</label>
   <input id="date" type="date">
   <div id="rateWrap">
-  <label for="rate">Monzo (Mastercard) rate for this day (€ per £1)</label>
+  <label for="rate" id="rateLabel">Monzo / agreed rate for this day</label>
   <input id="rate" type="number" inputmode="decimal" step="0.0001">
   <a class="link" id="rateLink" href="https://monzo.com/ecb-rates" target="_blank" rel="noopener">Check today's Monzo rate →</a>
   <p class="note" style="margin:8px 0 0">Not a Monzo user? Type an agreed rate instead.</p>
@@ -125,7 +132,7 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
     <input id="tDesc" type="text" placeholder="What was it for?">
   </div>
   <div class="row" style="margin-top:8px">
-    <select id="tCur" style="flex:1"><option value="GBP">£ Pounds</option><option value="EUR">€ Euros</option></select>
+    <select id="tCur" style="flex:1"></select>
     <button id="tAdd" style="flex:1">Add to tab</button>
   </div>
   <p class="note" id="tNote"></p>
@@ -142,7 +149,7 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
   <div id="rpBody" hidden>
     <div id="rpList"></div>
     <div class="row" style="margin-top:12px">
-      <input id="rpAmt" type="number" inputmode="decimal" step="0.01" placeholder="£ 0.00">
+      <input id="rpAmt" type="number" inputmode="decimal" step="0.01" placeholder="0.00">
       <input id="rpNote" type="text" placeholder="Note (optional)">
     </div>
     <div class="row" style="margin-top:8px">
@@ -180,29 +187,29 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
   <h2>How to use this app</h2>
   <details class="gd" open><summary>What is it for?</summary><div>
     <p>It splits the cost of a trip between friends when one person pays by card abroad and the others repay in their home currency at the exchange rate the card used (Monzo's daily Mastercard rate), or at a rate they agree. It also handles big costs, like flights, that one person covers up front and the other repays gradually.</p>
-    <p>It keeps two separate ledgers: the <b>Daily split</b> (everyday shared spending) and the <b>Trip Tab</b> (larger deferred costs). Right now it works in pounds (£) and euros (€).</p></div></details>
+    <p>It keeps two separate ledgers: the <b>Daily split</b> (everyday shared spending) and the <b>Trip Tab</b> (larger deferred costs). You choose your home currency and the currency spent on the trip.</p></div></details>
   <details class="gd"><summary>Quick start</summary><div>
-    <ol><li>Tap <b>Trips</b>, then start a new trip. Enter a trip name, everyone's names separated by commas, who pays by card, who picks up the Trip Tab and who owes it. Choose a Euro or Pound trip.</li>
+    <ol><li>Tap <b>Trips</b>, then start a new trip. Enter a trip name, everyone's names separated by commas, who pays by card, who picks up the Trip Tab and who owes it. Choose your home currency and the trip currency.</li>
     <li>On <b>Daily split</b>, add each shared spend as it happens.</li>
-    <li>On a euro trip, enter the Monzo (Mastercard) rate for that day, or an agreed rate.</li>
+    <li>If the trip currency differs from yours, enter the Monzo (Mastercard) rate for that day, or an agreed rate.</li>
     <li>The green banner shows what each person owes the card payer.</li>
     <li>Use <b>Trip Tab</b> for big costs someone else paid up front, then log repayments.</li>
     <li>At the end, open <b>Finish trip</b> for a report.</li></ol></div></details>
   <details class="gd"><summary>Daily split</summary><div>
     <p>Pick the day, then add each spend with a short description. Every spend is shared equally between all travellers.</p>
-    <p>On a euro trip, the day's total is divided by the number of travellers, then converted to pounds at that day's rate. The banner shows what each person (other than the card payer) owes. Each day keeps its own rate, so later changes never alter earlier days.</p>
+    <p>When the trip currency differs from yours, the day's total is divided by the number of travellers, then converted to your home currency at that day's rate. The banner shows what each person (other than the card payer) owes. Each day keeps its own rate, so later changes never alter earlier days.</p>
     <p>Wrong entry? Tap the ✕ beside it. Earlier days are listed under <b>All days</b>, with copy buttons.</p></div></details>
   <details class="gd"><summary>Trip Tab</summary><div>
     <p>For larger costs that one person pays up front and is repaid later. The person who pays is "the person who picks up the Trip Tab"; the person who repays is "the person who owes it". You choose both when you start the trip.</p>
-    <p>Add each item in £ or €. A euro item converts at the rate showing on the Daily split page at that moment, and keeps that rate. The tab is completely separate from the daily split.</p></div></details>
+    <p>Add each item in your home currency or the trip currency. A trip-currency item converts at the rate showing on the Daily split page at that moment, and keeps that rate. The tab is completely separate from the daily split.</p></div></details>
   <details class="gd"><summary>Repayments</summary><div>
-    <p>When the tab is complete, tap <b>Finalise tab amount</b> to fix what is owed. Then log each repayment as it happens: bank transfer, cash, or buying a meal or drink (use its £ value). A running balance shows what is left.</p>
+    <p>When the tab is complete, tap <b>Finalise tab amount</b> to fix what is owed. Then log each repayment as it happens: bank transfer, cash, or buying a meal or drink (use its value in your home currency). A running balance shows what is left.</p>
     <p>If you change the tab after finalising, an <b>Update finalised amount</b> button appears.</p></div></details>
   <details class="gd"><summary>Finish trip and reports</summary><div>
     <p>Choose the country, then read the full report: every day and spend, the Trip Tab, repayments and totals. <b>Download PDF</b>, <b>Share PDF</b>, <b>Print / Save as PDF</b> and <b>Copy report text</b> are all there; which ones work depends on your device and browser.</p></div></details>
-  <details class="gd"><summary>Euro trips and Pound trips</summary><div>
-    <p><b>Euro trip:</b> spends are in euros and converted to pounds using Monzo's daily Mastercard rate, or a rate you agree.</p>
-    <p><b>Pound trip:</b> everything is in pounds, so there is no rate and no conversion.</p></div></details>
+  <details class="gd"><summary>Currencies</summary><div>
+    <p><b>Different currencies:</b> spends are in the trip currency and converted to your home currency using Monzo's daily Mastercard rate, or a rate you agree.</p>
+    <p><b>Same currency:</b> choose "Same as my home currency". There is then no rate and no conversion.</p></div></details>
   <details class="gd"><summary>Trips and people</summary><div>
     <p>You can keep several trips side by side. Use the <b>Trips</b> button to switch, or start another. The names and roles are fixed once a trip starts, so if someone joins midway, start a new trip.</p>
     <p><b>Delete this trip</b> (under Finish trip) removes only that trip. Save its PDF first.</p></div></details>
@@ -268,6 +275,13 @@ const keyFor=(id,b)=>id==='t1'?b:b+'-'+id;
 const K=b=>keyFor(trips.current,b);
 const saveTrips=()=>{try{localStorage.setItem('robtrips-v1',JSON.stringify(trips));}catch(e){}};
 const curTrip=()=>trips.list.find(x=>x.id===trips.current)||{name:''};
+const CURS=[['GBP','£','Pound'],['EUR','€','Euro'],['USD','$','US dollar'],['AUD','A$','Australian dollar'],['CAD','C$','Canadian dollar'],['NZD','NZ$','NZ dollar'],['JPY','¥','Yen'],['CHF','CHF ','Swiss franc'],['SEK','SEK ','Swedish krona'],['NOK','NOK ','Norwegian krone'],['DKK','DKK ','Danish krone'],['PLN','PLN ','Zloty'],['CZK','CZK ','Czech koruna'],['TRY','TRY ','Turkish lira'],['AED','AED ','UAE dirham'],['INR','INR ','Indian rupee'],['ZAR','ZAR ','South African rand'],['THB','THB ','Thai baht'],['MXN','MXN ','Mexican peso']];
+const curOf=code=>{const c=CURS.find(x=>x[0]===code)||CURS[0];return{code:c[0],sym:c[1],name:c[2]};};
+const CKEY=K('robsplit-cur');
+let cur={home:curOf('GBP'),foreign:curOf('EUR')};
+try{const t=localStorage.getItem(CKEY);if(t){const o=JSON.parse(t);cur={home:curOf(o.home),foreign:curOf(o.foreign)};}}catch(e){}
+const saveCur=()=>{try{localStorage.setItem(CKEY,JSON.stringify({home:cur.home.code,foreign:cur.foreign.code}));}catch(e){}};
+const HS=()=>cur.home.sym,FS=()=>cur.foreign.sym;
 const PKEY=K('robsplit-people');
 let ppl={names:[],payer:'',picker:'',debtor:''};
 try{
@@ -283,7 +297,7 @@ const KEY=K('robsplit-v2');
 let data={days:{},lastRate:1.1722};
 let mode=null;
 try{mode=localStorage.getItem(K('robsplit-mode'));}catch(e){}
-const CS=()=>mode==='GBP'?'£':'€';
+const CS=()=>mode==='GBP'?''+HS()+'':''+FS()+'';
 try{const s=localStorage.getItem(KEY);if(s)data=JSON.parse(s);}catch(e){}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}}
 function today(){const n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');}
@@ -291,7 +305,7 @@ function label(k){const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d
 function day(k){if(!data.days[k])data.days[k]={rate:mode==='GBP'?1:data.lastRate,items:[]};return data.days[k];}
 const sum=k=>day(k).items.reduce((t,i)=>t+i.a,0);
 const gbp=k=>{const r=day(k).rate;return r>0?sum(k)/N()/r:0;};
-const summary=k=>label(k)+'\n'+day(k).items.map(i=>CS()+i.a.toFixed(2)+' - '+i.d).join('\n')+'\nTotal for the day: '+CS()+sum(k).toFixed(2)+'\nShare per person: £'+gbp(k).toFixed(2)+(mode==='GBP'?'':' (rate '+day(k).rate+')');
+const summary=k=>label(k)+'\n'+day(k).items.map(i=>CS()+i.a.toFixed(2)+' - '+i.d).join('\n')+'\nTotal for the day: '+CS()+sum(k).toFixed(2)+'\nShare per person: '+HS()+''+gbp(k).toFixed(2)+(mode==='GBP'?'':' (rate '+day(k).rate+')');
 $('date').value=today();
 function render(){
   const k=$('date').value||today(),dd=day(k);
@@ -309,7 +323,7 @@ function render(){
   });
   const t=sum(k);$('total').textContent=CS()+t.toFixed(2);
   if(t>0&&dd.rate>0){
-    $('result').textContent=oweText()+' to pay '+ppl.payer+', £'+gbp(k).toFixed(2);
+    $('result').textContent=oweText()+' to pay '+ppl.payer+', '+HS()+''+gbp(k).toFixed(2);
     $('sub').textContent=(N()===2?'Half':'1/'+N())+' of '+CS()+t.toFixed(2)+' = '+CS()+(t/N()).toFixed(2)+(mode==='GBP'?'':' ÷ '+dd.rate);
   }else{$('result').textContent='Shares will appear here';$('sub').textContent='';}
   $('result').classList.toggle('idle',!(t>0&&dd.rate>0));
@@ -350,7 +364,7 @@ function rsave(){try{localStorage.setItem(RKEY,JSON.stringify(rp));}catch(e){}}
 const rPaid=()=>Math.round(rp.items.reduce((t,i)=>t+i.a,0)*100)/100;
 const rBal=()=>Math.round(((rp.final||0)-rPaid())*100)/100;
 const fmtD=iso=>{const [y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('en-GB',{day:'numeric',month:'short'});};
-const balText=b=>b>0.004?'Still owed to '+ppl.picker+': £'+b.toFixed(2):(b<-0.004?'Overpaid by £'+(-b).toFixed(2):'Fully repaid');
+const balText=b=>b>0.004?'Still owed to '+ppl.picker+': '+HS()+''+b.toFixed(2):(b<-0.004?'Overpaid by '+HS()+''+(-b).toFixed(2):'Fully repaid');
 function repData(){
   if(rp.final===null)return null;
   let run=rp.final;
@@ -361,30 +375,30 @@ $('rpDate').value=today();
 function renderRepay(){
   const cur=tSum(),fin=rp.final,info=$('rpFinal'),btn=$('rpFinalise'),body=$('rpBody');
   if(fin===null){
-    info.textContent=cur>0?'Tab total so far: £'+cur.toFixed(2)+'. Finalise it once the tab is complete to start logging repayments.':'Add Trip Tab entries above, then finalise the amount here.';
-    btn.hidden=cur<=0;btn.textContent='Finalise tab amount (£'+cur.toFixed(2)+')';body.hidden=true;
+    info.textContent=cur>0?'Tab total so far: '+HS()+''+cur.toFixed(2)+'. Finalise it once the tab is complete to start logging repayments.':'Add Trip Tab entries above, then finalise the amount here.';
+    btn.hidden=cur<=0;btn.textContent='Finalise tab amount ('+HS()+''+cur.toFixed(2)+')';body.hidden=true;
     return;
   }
   const changed=Math.abs(cur-fin)>0.004;
-  info.textContent='Amount owed (finalised): £'+fin.toFixed(2)+(changed?'  |  The tab now totals £'+cur.toFixed(2):'');
-  btn.hidden=!changed||cur<=0;btn.textContent='Update finalised amount to £'+cur.toFixed(2);
+  info.textContent='Amount owed (finalised): '+HS()+''+fin.toFixed(2)+(changed?'  |  The tab now totals '+HS()+''+cur.toFixed(2):'');
+  btn.hidden=!changed||cur<=0;btn.textContent='Update finalised amount to '+HS()+''+cur.toFixed(2);
   body.hidden=false;
   const l=$('rpList');l.innerHTML='';
   const rd=repData();
   if(!rd.items.length){const e=document.createElement('div');e.className='empty';e.textContent='No repayments logged yet.';l.appendChild(e);}
   rd.items.forEach((it,n)=>{
     const r=document.createElement('div');r.className='item';
-    const a=document.createElement('span');a.className='amt';a.textContent='£'+it.a.toFixed(2);
+    const a=document.createElement('span');a.className='amt';a.textContent=''+HS()+''+it.a.toFixed(2);
     const d=document.createElement('span');d.className='desc';
     const m=document.createElement('div');m.textContent=it.date+' · '+it.m+(it.n?' - '+it.n:'');
-    const b=document.createElement('div');b.className='note';b.style.margin='0';b.textContent='balance after: £'+it.bal.toFixed(2);
+    const b=document.createElement('div');b.className='note';b.style.margin='0';b.textContent='balance after: '+HS()+''+it.bal.toFixed(2);
     d.append(m,b);
     const x=document.createElement('button');x.className='x';x.textContent='✕';
     x.onclick=()=>{rp.items.splice(n,1);rsave();renderRepay();};
     r.append(a,d,x);l.appendChild(r);
   });
   const bal=rBal();
-  $('rpBal').textContent=bal>0.004?ppl.debtor+' still owes '+ppl.picker+' £'+bal.toFixed(2):(bal<-0.004?'Overpaid by £'+(-bal).toFixed(2):'All repaid ✓');
+  $('rpBal').textContent=bal>0.004?ppl.debtor+' still owes '+ppl.picker+' '+HS()+''+bal.toFixed(2):(bal<-0.004?'Overpaid by '+HS()+''+(-bal).toFixed(2):'All repaid ✓');
 }
 $('rpFinalise').onclick=()=>{const c=tSum();if(c<=0)return;rp.final=c;rsave();renderRepay();};
 $('rpAdd').onclick=()=>{
@@ -403,25 +417,25 @@ function curRate(){const v=parseFloat($('rate').value);return v>0?v:data.lastRat
 const r2=x=>Math.round(x*100)/100;
 const tGBP=i=>i.c==='GBP'?i.a:r2(i.a/i.rate);
 const tSum=()=>r2(tab.items.reduce((t,i)=>t+tGBP(i),0));
-const tTxt=()=>'Trip Tab ('+ppl.picker+')\n'+tab.items.map(tLine).join('\n')+'\n'+ppl.debtor+' owes '+ppl.picker+': £'+tSum().toFixed(2);
-const tLine=i=>i.c==='GBP'?'£'+i.a.toFixed(2)+' - '+i.d:'€'+i.a.toFixed(2)+' (£'+tGBP(i).toFixed(2)+' @ '+i.rate+') - '+i.d;
+const tTxt=()=>'Trip Tab ('+ppl.picker+')\n'+tab.items.map(tLine).join('\n')+'\n'+ppl.debtor+' owes '+ppl.picker+': '+HS()+''+tSum().toFixed(2);
+const tLine=i=>i.c==='GBP'?''+HS()+''+i.a.toFixed(2)+' - '+i.d:''+FS()+''+i.a.toFixed(2)+' ('+HS()+''+tGBP(i).toFixed(2)+' @ '+i.rate+') - '+i.d;
 function renderTab(){
   const l=$('tabList');l.innerHTML='';
   if(!tab.items.length){const e=document.createElement('div');e.className='empty';e.textContent='No entries yet.';l.appendChild(e);}
   tab.items.forEach((it,n)=>{
     const r=document.createElement('div');r.className='item';
-    const a=document.createElement('span');a.className='amt';a.textContent=(it.c==='GBP'?'£':'€')+it.a.toFixed(2);
+    const a=document.createElement('span');a.className='amt';a.textContent=(it.c==='GBP'?''+HS()+'':''+FS()+'')+it.a.toFixed(2);
     const d=document.createElement('span');d.className='desc';
-    d.textContent=it.d+(it.c==='EUR'?'  → £'+tGBP(it).toFixed(2)+' @ '+it.rate:'');
+    d.textContent=it.d+(it.c==='EUR'?'  → '+HS()+''+tGBP(it).toFixed(2)+' @ '+it.rate:'');
     const x=document.createElement('button');x.className='x';x.textContent='✕';
     x.onclick=()=>{tab.items.splice(n,1);tsave();renderTab();};
     r.append(a,d,x);l.appendChild(r);
   });
-  $('tResult').textContent=tab.items.length?ppl.debtor+' owes '+ppl.picker+' £'+tSum().toFixed(2):'Nothing on the tab';
+  $('tResult').textContent=tab.items.length?ppl.debtor+' owes '+ppl.picker+' '+HS()+''+tSum().toFixed(2):'Nothing on the tab';
   $('tResult').classList.toggle('idle',!tab.items.length);
   $('tText').textContent=tab.items.length?tTxt():'';
   renderRepay();
-  $('tNote').textContent=$('tCur').value==='EUR'?'€ entries convert at the daily Monzo / agreed rate currently set ('+curRate()+') and keep that rate.':'';
+  $('tNote').textContent=$('tCur').value==='EUR'?''+FS()+' entries convert at the daily Monzo / agreed rate currently set ('+curRate()+') and keep that rate.':'';
 }
 $('tCur').addEventListener('change',renderTab);
 $('tAdd').onclick=()=>{
@@ -463,12 +477,12 @@ function reportData(){
   const tabItems=tab.items.map(i=>({desc:i.d,eur:i.c==='EUR'?i.a:null,rate:i.rate,gbp:tGBP(i)}));
   return{date:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}),days:days,totE:r2(totE),totG:r2(totG),tabItems:tabItems,tabTotal:tSum(),rp:repData()};
 }
-const E=x=>CS()+x.toFixed(2),P=x=>'£'+x.toFixed(2);
+const E=x=>CS()+x.toFixed(2),P=x=>''+HS()+''+x.toFixed(2);
 function reportText(){
   const d=reportData(),L=[];
   L.push(tripTitle().toUpperCase(),ppl.names.join(' & ')+'  |  '+d.date,'','1. DAILY SPLIT ('+splitLabel().toUpperCase()+')');
   d.days.forEach(x=>{
-    L.push('',x.label+(mode==='GBP'?'':'  (rate '+x.rate+' per £1)'));
+    L.push('',x.label+(mode==='GBP'?'':'  (rate '+x.rate+' per '+HS()+'1)'));
     x.items.forEach(i=>L.push('  '+E(i.a)+'  '+i.d));
     L.push('  Day total '+E(x.total)+'  |  Each share '+E(x.half)+'  |  Each pays '+P(x.share));
   });
@@ -493,7 +507,7 @@ function renderRep(){
   const d=reportData(),v=$('repView');v.innerHTML='';
   v.append(el('div','rtitle',tripTitle()),el('div','rsub',ppl.names.join(' & ')+'  ·  '+d.date),el('div','rh','1. Daily split ('+splitLabel()+')'));
   d.days.forEach(x=>{
-    v.append(row(x.label,mode==='GBP'?'':'rate '+x.rate+' per £1','dh'));
+    v.append(row(x.label,mode==='GBP'?'':'rate '+x.rate+' per '+HS()+'1','dh'));
     x.items.forEach(i=>v.append(row(i.d,E(i.a))));
     v.append(row('Day total '+E(x.total)+'  ·  each '+E(x.half),'Each pays '+P(x.share),'rf'));
   });
@@ -502,7 +516,7 @@ function renderRep(){
   v.append(el('div','rh','2. Trip Tab (paid by '+ppl.picker+')'));
   d.tabItems.forEach(i=>v.append(row(i.desc+(i.eur!==null?'  ('+E(i.eur)+' @ '+i.rate+')':''),P(i.gbp))));
   if(!d.tabItems.length)v.append(el('div','empty','No entries.'));
-  v.append(row(ppl.debtor+' owes '+ppl.picker,'£'+d.tabTotal.toFixed(2),'rf'));
+  v.append(row(ppl.debtor+' owes '+ppl.picker,''+HS()+''+d.tabTotal.toFixed(2),'rf'));
   if(d.rp){
     v.append(el('div','rh','3. Repayments to '+ppl.picker));
     d.rp.items.forEach(i=>v.append(row(i.date+' · '+i.m+(i.n?' - '+i.n:'')+'  (balance '+P(i.bal)+')',P(i.a))));
@@ -548,7 +562,7 @@ function makePdf(){
   heading('1. Daily split ('+splitLabel()+')');
   d.days.forEach(x=>{
     need(70);y-=16;
-    text(x.label,M,y,11,true,DARK);if(mode!=='GBP')text('rate '+x.rate+' per £1',R,y,9,false,GRAY,true);y-=5;
+    text(x.label,M,y,11,true,DARK);if(mode!=='GBP')text('rate '+x.rate+' per '+HS()+'1',R,y,9,false,GRAY,true);y-=5;
     x.items.forEach(i=>{
       const ls=wrap(i.d,10,CW-90,false),h=ls.length*13+7;need(h+2);
       const top=y;ls.forEach((l,n)=>text(l,M+6,top-12-n*13,10,false,DARK));
@@ -563,7 +577,7 @@ function makePdf(){
   d.tabItems.forEach(i=>{
     const ls=wrap(i.desc,10,CW-90,false),sub=i.eur!==null,h=ls.length*13+(sub?11:0)+7;need(h+2);
     const top=y;ls.forEach((l,n)=>text(l,M+6,top-12-n*13,10,false,DARK));
-    if(sub)text(E(i.eur)+' at '+i.rate+' per £1',M+6,top-12-ls.length*13+1,8.5,false,GRAY);
+    if(sub)text(E(i.eur)+' at '+i.rate+' per '+HS()+'1',M+6,top-12-ls.length*13+1,8.5,false,GRAY);
     text(P(i.gbp),R-6,top-12,10,false,DARK,true);
     y=top-h;hline(y,RULE,.4);
   });
@@ -649,11 +663,11 @@ $('repCopy').onclick=async()=>{
   setTimeout(()=>$('repCopy').textContent='Copy report text',2200);
 };
 $('clearBtn').onclick=()=>{
-  const w=(rp.final!==null&&rBal()>0.004)?'Warning: '+ppl.picker+' is still owed £'+rBal().toFixed(2)+' in repayments.':(rp.final===null&&tSum()>0?'Warning: the Trip Tab has not been finalised or repaid.':'');
+  const w=(rp.final!==null&&rBal()>0.004)?'Warning: '+ppl.picker+' is still owed '+HS()+''+rBal().toFixed(2)+' in repayments.':(rp.final===null&&tSum()>0?'Warning: the Trip Tab has not been finalised or repaid.':'');
   $('clearWarn').textContent=w;$('clearConfirm').hidden=false;$('clearBtn').hidden=true;$('clearNote').textContent='';};
 $('clearNo').onclick=()=>{$('clearConfirm').hidden=true;$('clearBtn').hidden=false;};
 $('clearYes').onclick=()=>{
-  try{['robsplit-v2','robtab-v1','robrepay-v1','robsplit-mode','robsplit-country','robsplit-people'].forEach(b=>localStorage.removeItem(keyFor(trips.current,b)));}catch(e){}
+  try{['robsplit-v2','robtab-v1','robrepay-v1','robsplit-mode','robsplit-country','robsplit-people','robsplit-cur'].forEach(b=>localStorage.removeItem(keyFor(trips.current,b)));}catch(e){}
   trips.list=trips.list.filter(x=>x.id!==trips.current);
   if(trips.list.length)trips.current=trips.list[trips.list.length-1].id;
   else{const id='t'+Date.now();trips.list.push({id:id,name:'New trip'});trips.current=id;}
@@ -670,14 +684,14 @@ function show(v){
 $('navRep').onclick=()=>show('rep');
 $('navHelp').onclick=()=>show('help');
 // ---- Backup / import ----
-const BK_KEYS=['robsplit-v2','robtab-v1','robrepay-v1','robsplit-mode','robsplit-country','robsplit-people'];
+const BK_KEYS=['robsplit-v2','robtab-v1','robrepay-v1','robsplit-mode','robsplit-country','robsplit-people','robsplit-cur'];
 function buildBackup(){
   const out={app:'trip-split',version:1,exported:new Date().toISOString(),trips:[]};
   trips.list.forEach(t=>{
     const d={};
     BK_KEYS.forEach(b=>{
       let v=null;try{v=localStorage.getItem(keyFor(t.id,b));}catch(e){}
-      if(t.id===trips.current){if(b==='robsplit-mode'&&mode)v=mode;if(b==='robsplit-people'&&ppl.names.length)v=JSON.stringify(ppl);}
+      if(t.id===trips.current){if(b==='robsplit-mode'&&mode)v=mode;if(b==='robsplit-people'&&ppl.names.length)v=JSON.stringify(ppl);if(b==='robsplit-cur')v=JSON.stringify({home:cur.home.code,foreign:cur.foreign.code});}
       if(v!==null)d[b]=v;
     });
     if(Object.keys(d).length)out.trips.push({id:t.id,name:t.name,data:d});
@@ -754,15 +768,18 @@ function hasData(){return Object.keys(data.days).some(k=>data.days[k].items.leng
 function applyMode(){
   const g=mode==='GBP';
   $('rateWrap').hidden=g;
-  $('amt').placeholder=(g?'£':'€')+' 0.00';
+  $('amt').placeholder=(g?HS():FS())+' 0.00';
+  $('rpAmt').placeholder=HS()+' 0.00';
+  $('rateLabel').textContent='Monzo / agreed rate for this day ('+cur.foreign.code+' per 1 '+cur.home.code+')';
+  {const pv=$('tCur').value;$('tCur').innerHTML='<option value="GBP">'+cur.home.name+' ('+cur.home.sym.trim()+')</option><option value="EUR">'+cur.foreign.name+' ('+cur.foreign.sym.trim()+')</option>';$('tCur').value=pv||'GBP';}
   $('tCur').hidden=g;if(g)$('tCur').value='GBP';
   if(ppl.picker){$('tabNote').textContent='Things '+ppl.picker+' paid for, owed by '+ppl.debtor+', outside the daily split.';$('rpTitle').textContent='Repayments to '+ppl.picker;}
-  $('tripType').textContent=mode?curTrip().name+'  ·  '+(g?'Pound trip (£)':'Euro trip (€ at the Monzo / agreed rate)'):'';
+  $('tripType').textContent=mode?curTrip().name+'  ·  '+(g?cur.home.name+' trip ('+cur.home.code+')':cur.foreign.name+' trip ('+cur.foreign.code+', at the Monzo / agreed rate)'):'';
   render();renderTab();
 }
 function setMode(m){
   mode=m;try{localStorage.setItem(K('robsplit-mode'),m);}catch(e){}
-  if(m==='GBP'){$('country').value='United Kingdom';syncCountryUI();saveCountry();}
+  if(m==='GBP'&&cur.home.code==='GBP'){$('country').value='United Kingdom';syncCountryUI();saveCountry();}
   applyMode();show('daily');
 }
 function tripPicker(id){try{const p=JSON.parse(localStorage.getItem(keyFor(id,'robsplit-people')));if(p&&p.picker)return p.picker;}catch(e){}return 'the Trip Tab holder';}
@@ -779,7 +796,7 @@ function renderTrips(){
     const n=document.createElement('div');n.style.fontWeight='600';n.textContent=t.name+(t.id===trips.current?'  (current)':'');
     const sub=document.createElement('div');sub.className='note';sub.style.margin='0';
     const bal=tripBalance(t.id);
-    sub.textContent=bal===null?'':(bal>0.004?'Still owed to '+tripPicker(t.id)+': £'+bal.toFixed(2):'Repaid in full');
+    sub.textContent=bal===null?'':(bal>0.004?'Still owed to '+tripPicker(t.id)+': '+HS()+''+bal.toFixed(2):'Repaid in full');
     d.append(n,sub);r.append(d);
     if(t.id!==trips.current){
       const b=document.createElement('button');b.className='ghost';b.textContent='Open';
@@ -789,7 +806,7 @@ function renderTrips(){
     l.appendChild(r);
   });
   $('tripListCard').hidden=!mode&&trips.list.length===1;
-  $('startBack').hidden=!mode;
+  $('startBack').hidden=!mode;$('introCard').hidden=!!mode;
   if(!$('newPeople').value&&ppl.names.length){$('newPeople').value=ppl.names.join(', ');fillSelects();$('selPayer').value=ppl.payer;$('selPicker').value=ppl.picker;$('selDebtor').value=ppl.debtor;}
 }
 const parseNames=()=>{const out=[];$('newPeople').value.split(',').map(x=>x.trim()).filter(Boolean).forEach(n=>{if(!out.some(m=>m.toLowerCase()===n.toLowerCase()))out.push(n);});return out;};
@@ -802,7 +819,33 @@ function fillSelects(){
   });
 }
 $('newPeople').addEventListener('input',fillSelects);
-function startTrip(m){
+function fillCur(id,withSame){
+  const el=$(id);el.innerHTML='';
+  if(withSame){const o=document.createElement('option');o.value='SAME';o.textContent='Same as my home currency (no conversion)';el.appendChild(o);}
+  CURS.forEach(c=>{const o=document.createElement('option');o.value=c[0];o.textContent=c[2]+' ('+c[0]+')';el.appendChild(o);});
+}
+fillCur('homeSel',false);fillCur('tripSel',true);
+$('homeSel').value='GBP';$('tripSel').value='EUR';
+function makeSample(){
+  if(!mode&&!hasData())trips.list=trips.list.filter(x=>x.id!==trips.current);
+  const id='t'+Date.now();
+  const dt=n=>{const d=new Date();d.setDate(d.getDate()-n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+  const put=(b,v)=>localStorage.setItem(keyFor(id,b),typeof v==='string'?v:JSON.stringify(v));
+  const days={};
+  days[dt(1)]={rate:1.15,items:[{a:12.5,d:'Train tickets'},{a:48,d:'Dinner'},{a:9.2,d:'Coffee and pastries'}]};
+  days[dt(0)]={rate:1.16,items:[{a:22,d:'Museum tickets'},{a:35.5,d:'Lunch'}]};
+  try{
+    put('robsplit-v2',{days:days,lastRate:1.16});
+    put('robtab-v1',{items:[{c:'GBP',a:150,d:'Flights'},{c:'EUR',a:20,d:'Museum ticket for Sam',rate:1.16}]});
+    put('robrepay-v1',{final:167.24,items:[{d:dt(0),m:'Bank transfer',n:'First instalment',a:60}]});
+    put('robsplit-people',{names:['Sam','Alex'],payer:'Sam',picker:'Alex',debtor:'Sam'});
+    put('robsplit-mode','EUR');put('robsplit-country','Spain');put('robsplit-cur',{home:'GBP',foreign:'EUR'});
+  }catch(e){return;}
+  trips.list.push({id:id,name:'Sample trip'});trips.current=id;saveTrips();location.reload();
+}
+$('sampleBtn').onclick=makeSample;
+function startTrip(){
+  const hc=$('homeSel').value,tc=$('tripSel').value,m=(tc==='SAME'||tc===hc)?'GBP':'EUR',cc={home:hc,foreign:m==='GBP'?hc:tc};
   const nm=$('newName').value.trim(),ns=parseNames();
   if(ns.length<2){$('startErr').textContent='Add at least two names, separated by commas.';return;}
   const pk=$('selPicker').value,db=$('selDebtor').value;
@@ -811,19 +854,19 @@ function startTrip(m){
   const pp={names:ns,payer:$('selPayer').value,picker:pk,debtor:db};
   if(!mode&&!hasData()){
     const t=curTrip();t.name=nm||(t.name==='New trip'?'Trip 1':t.name);saveTrips();
-    ppl=pp;savePeople();setMode(m);return;
+    ppl=pp;savePeople();cur={home:curOf(cc.home),foreign:curOf(cc.foreign)};saveCur();setMode(m);return;
   }
   const id='t'+Date.now();
   trips.list.push({id:id,name:nm||('Trip '+(trips.list.length+1))});trips.current=id;saveTrips();
   try{
     localStorage.setItem(keyFor(id,'robsplit-people'),JSON.stringify(pp));
+    localStorage.setItem(keyFor(id,'robsplit-cur'),JSON.stringify(cc));
     localStorage.setItem(keyFor(id,'robsplit-mode'),m);
-    localStorage.setItem(keyFor(id,'robsplit-country'),m==='GBP'?'United Kingdom':'');
+    localStorage.setItem(keyFor(id,'robsplit-country'),(m==='GBP'&&hc==='GBP')?'United Kingdom':'');
   }catch(e){}
   location.reload();
 }
-$('startEur').onclick=()=>startTrip('EUR');
-$('startGbp').onclick=()=>startTrip('GBP');
+$('startGo').onclick=startTrip;
 $('startBack').onclick=()=>show('daily');
 $('tripChange').onclick=()=>{renderTrips();show('start');};
 if(!mode&&hasData()){mode='EUR';try{localStorage.setItem(K('robsplit-mode'),'EUR');}catch(e){}}
