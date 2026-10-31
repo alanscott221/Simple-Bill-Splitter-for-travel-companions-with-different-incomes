@@ -47,6 +47,7 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
 .rbox{margin-top:8px;padding:12px;border-radius:12px;background:var(--bg)}
 .rbox .rs{display:flex;justify-content:space-between;gap:8px;padding:4px 0;font-weight:600}
 .gd{border-bottom:1px solid var(--line)}.gd summary{font-weight:600;padding:12px 0;cursor:pointer}.gd div{padding:0 0 12px;font-size:.93rem;line-height:1.45}.gd p{margin:0 0 8px}.gd ol,.gd ul{margin:0 0 8px;padding-left:20px}
+.chk{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:.95rem;color:var(--text)}.chk input{width:auto;margin:0;transform:scale(1.25)}
 [hidden]{display:none!important}
 @media print{.noprint{display:none!important}body{background:#fff!important;color:#000!important;padding:0!important}.card{background:#fff!important;border:0!important;color:#000!important}.daytxt{color:#000!important}.rf,.rbox{background:#eef3f1!important}.rtitle,.rh,.rf span:last-child{color:#0f7b5f!important}.rsub,.dh span+span{color:#555!important}.rr,.rh{border-color:#ccc!important}}
 .nav{padding:10px}.nav .btns button{padding:10px 4px;font-size:.85rem}
@@ -68,8 +69,8 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
 </div>
 <div class="card">
   <h2>Start a new trip</h2>
-  <label for="newName">Trip name</label>
-  <input id="newName" type="text" placeholder="e.g. UK weekend" autocomplete="off">
+  <label for="newName">Trip name or destination</label>
+  <input id="newName" type="text" placeholder="e.g. London weekend" autocomplete="off">
   <label for="newPeople">Who's on the trip? (names, separated by commas)</label>
   <input id="newPeople" type="text" placeholder="e.g. Sam, Alex, Jo" autocomplete="off">
   <label for="selPayer">Who pays by card? (the others repay them each day)</label>
@@ -78,12 +79,12 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
   <select id="selPicker"></select>
   <label for="selDebtor">Who repays those big costs later?</label>
   <select id="selDebtor"></select>
-  <p class="note" id="startErr" style="color:#c0392b;font-weight:600"></p>
   <label for="homeSel">Your home currency (what people repay in)</label>
   <select id="homeSel"></select>
   <label for="tripSel">Currency spent on the trip</label>
   <select id="tripSel"></select>
   <p class="note" style="margin:6px 0 10px">If they differ, you enter an exchange rate for each day, such as Monzo's Mastercard rate or a rate you agree.</p>
+  <p class="note" id="startErr" style="color:#c0392b;font-weight:600"></p>
   <button class="add" id="startGo">Start trip</button>
   <button class="ghost add" id="startHelp">How does this work?</button>
   <button class="ghost add" id="startBack" hidden>Back to current trip</button>
@@ -109,6 +110,7 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
     <input id="amt" type="number" inputmode="decimal" step="0.01" placeholder="€ 0.00">
     <input id="desc" type="text" placeholder="What was it?">
   </div>
+  <details class="gd" id="spDet" style="margin-top:8px"><summary id="spSum">Shared by everyone (equal split)</summary><div id="spBox"></div></details>
   <button class="add" id="addBtn">Add spend</button>
 </div>
 <div class="card">
@@ -196,8 +198,8 @@ button.x{background:none;color:var(--muted);padding:4px 8px;font-size:1.1rem}
     <li>Use <b>Trip Tab</b> for big costs someone else paid up front, then log repayments.</li>
     <li>At the end, open <b>Finish trip</b> for a report.</li></ol></div></details>
   <details class="gd"><summary>Daily split</summary><div>
-    <p>Pick the day, then add each spend with a short description. Every spend is shared equally between all travellers.</p>
-    <p>When the trip currency differs from yours, the day's total is divided by the number of travellers, then converted to your home currency at that day's rate. The banner shows what each person (other than the card payer) owes. Each day keeps its own rate, so later changes never alter earlier days.</p>
+    <p>Pick the day, then add each spend with a short description. By default every spend is shared equally between all travellers. To split unevenly, open <b>Shared by</b> under the amount box and untick anyone who didn't share that spend. For example, log each person's meal separately, shared by that person only.</p>
+    <p>When the trip currency differs from yours, the day's total is divided by the number of travellers, then converted to your home currency at that day's rate. If you used <b>Shared by</b>, each person's own total is converted instead. The banner shows what each person (other than the card payer) owes. Each day keeps its own rate, so later changes never alter earlier days.</p>
     <p>Wrong entry? Tap the ✕ beside it. Earlier days are listed under <b>All days</b>, with copy buttons.</p></div></details>
   <details class="gd"><summary>Trip Tab</summary><div>
     <p>For larger costs that one person pays up front and is repaid later. The person who pays is "the person who picks up the Trip Tab"; the person who repays is "the person who owes it". You choose both when you start the trip.</p>
@@ -290,7 +292,7 @@ try{
 }catch(e){}
 const savePeople=()=>{try{localStorage.setItem(PKEY,JSON.stringify(ppl));}catch(e){}};
 const N=()=>Math.max(2,ppl.names.length);
-const splitLabel=()=>N()===2?'50/50':'equal shares';
+const splitLabel=()=>Object.keys(data.days).some(k=>data.days[k].items.length&&!isEven(k))?'some spends itemised':(N()===2?'50/50':'equal shares');
 const others=()=>ppl.names.filter(n=>n!==ppl.payer);
 const oweText=()=>{const o=others();return o.length<2?(o[0]||'Others')+' needs':o.slice(0,-1).join(', ')+' and '+o[o.length-1]+' each need';};
 const KEY=K('robsplit-v2');
@@ -302,10 +304,19 @@ try{const s=localStorage.getItem(KEY);if(s)data=JSON.parse(s);}catch(e){}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}}
 function today(){const n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');}
 function label(k){const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}
-function day(k){if(!data.days[k])data.days[k]={rate:mode==='GBP'?1:data.lastRate,items:[]};return data.days[k];}
+function day(k){if(!data.days[k])data.days[k]={rate:mode==='GBP'?1:data.lastRate,items:[]};if(mode==='GBP'&&data.days[k].rate!==1)data.days[k].rate=1;return data.days[k];}
 const sum=k=>day(k).items.reduce((t,i)=>t+i.a,0);
 const gbp=k=>{const r=day(k).rate;return r>0?sum(k)/N()/r:0;};
-const summary=k=>label(k)+'\n'+day(k).items.map(i=>CS()+i.a.toFixed(2)+' - '+i.d).join('\n')+'\nTotal for the day: '+CS()+sum(k).toFixed(2)+'\nShare per person: '+HS()+''+gbp(k).toFixed(2)+(mode==='GBP'?'':' (rate '+day(k).rate+')');
+const itemW=i=>(i.w&&i.w.length)?i.w.filter(n=>ppl.names.includes(n)):ppl.names;
+const evenItem=i=>!i.w||!i.w.length||ppl.names.every(n=>i.w.includes(n));
+const isEven=k=>day(k).items.every(evenItem);
+function owedList(k){
+  const o={},r=day(k).rate;ppl.names.forEach(n=>{o[n]=0;});
+  day(k).items.forEach(i=>{const w=itemW(i);w.forEach(n=>{o[n]+=i.a/w.length;});});
+  return others().map(n=>({n:n,trip:o[n],amt:r>0?Math.round(o[n]/r*100)/100:0}));
+}
+const owedStr=l=>l.map(o=>o.n+' '+P(o.amt)).join(', ');
+const summary=k=>label(k)+'\n'+day(k).items.map(i=>CS()+i.a.toFixed(2)+' - '+i.d+(evenItem(i)?'':' ['+itemW(i).join(', ')+']')).join('\n')+'\nTotal for the day: '+CS()+sum(k).toFixed(2)+(isEven(k)?'\nShare per person: '+HS()+''+gbp(k).toFixed(2):'\nOwed to '+ppl.payer+': '+owedStr(owedList(k)))+(mode==='GBP'?'':' (rate '+day(k).rate+')');
 $('date').value=today();
 function render(){
   const k=$('date').value||today(),dd=day(k);
@@ -316,15 +327,20 @@ function render(){
   dd.items.forEach((it,i)=>{
     const r=document.createElement('div');r.className='item';
     const a=document.createElement('span');a.className='amt';a.textContent=CS()+it.a.toFixed(2);
-    const d=document.createElement('span');d.className='desc';d.textContent=it.d;
+    const d=document.createElement('span');d.className='desc';d.textContent=it.d+(evenItem(it)?'':'  ['+itemW(it).join(', ')+']');
     const x=document.createElement('button');x.className='x';x.textContent='✕';
     x.onclick=()=>{dd.items.splice(i,1);save();render();};
     r.append(a,d,x);list.appendChild(r);
   });
   const t=sum(k);$('total').textContent=CS()+t.toFixed(2);
   if(t>0&&dd.rate>0){
-    $('result').textContent=oweText()+' to pay '+ppl.payer+', '+HS()+''+gbp(k).toFixed(2);
-    $('sub').textContent=(N()===2?'Half':'1/'+N())+' of '+CS()+t.toFixed(2)+' = '+CS()+(t/N()).toFixed(2)+(mode==='GBP'?'':' ÷ '+dd.rate);
+    if(isEven(k)){
+      $('result').textContent=oweText()+' to pay '+ppl.payer+', '+HS()+''+gbp(k).toFixed(2);
+      $('sub').textContent=(N()===2?'Half':'1/'+N())+' of '+CS()+t.toFixed(2)+' = '+CS()+(t/N()).toFixed(2)+(mode==='GBP'?'':' ÷ '+dd.rate);
+    }else{
+      $('result').textContent='Pay '+ppl.payer+': '+owedStr(owedList(k));
+      $('sub').textContent='Itemised split of '+CS()+t.toFixed(2)+(mode==='GBP'?'':' at '+dd.rate);
+    }
   }else{$('result').textContent='Shares will appear here';$('sub').textContent='';}
   $('result').classList.toggle('idle',!(t>0&&dd.rate>0));
   const h=$('hist');h.innerHTML='';
@@ -346,8 +362,12 @@ $('rate').addEventListener('input',()=>{
 $('addBtn').onclick=()=>{
   const a=parseFloat($('amt').value);if(!(a>0))return;
   const k=$('date').value||today();
-  day(k).items.push({a:Math.round(a*100)/100,d:$('desc').value.trim()||'Spend'});
-  $('amt').value='';$('desc').value='';save();render();
+  const sel=sharerSel();
+  if(!sel.length){$('spSum').textContent='Pick at least one person';return;}
+  const it={a:Math.round(a*100)/100,d:$('desc').value.trim()||'Spend'};
+  if(sel.length<ppl.names.length)it.w=sel;
+  day(k).items.push(it);
+  $('amt').value='';$('desc').value='';renderSharers();save();render();
 };
 $('copyBtn').onclick=async()=>{
   const k=$('date').value||today(),dd=day(k);if(!dd.items.length)return;
@@ -462,20 +482,20 @@ try{const c=localStorage.getItem(K('robsplit-country'));$('country').value=c===n
 syncCountryUI();
 $('countrySel').addEventListener('change',()=>{
   const v=$('countrySel').value;
-  if(v==='__other'){$('country').value='';$('country').hidden=false;$('country').focus();}
+  if(v==='__other'){if(COUNTRIES.includes($('country').value))$('country').value='';$('country').hidden=false;$('country').focus();}
   else{$('country').value=v;$('country').hidden=true;}
   saveCountry();renderRep();
 });
 $('country').addEventListener('input',()=>{saveCountry();renderRep();});
 function reportData(){
   const keys=Object.keys(data.days).filter(k=>data.days[k].items.length).sort();
-  let totE=0,totG=0;
+  let totE=0,totG=0,anyU=false;const byP={};
   const days=keys.map(k=>{
-    const dd=data.days[k],t=r2(sum(k)),g=r2(gbp(k));totE+=t;totG+=g;
-    return{label:label(k),rate:dd.rate,items:dd.items,total:t,half:r2(t/N()),share:g};
+    const dd=data.days[k],t=r2(sum(k)),ev=isEven(k),ol=owedList(k),g=ev?r2(gbp(k)):0;totE+=t;totG+=g;if(!ev)anyU=true;ol.forEach(o=>{byP[o.n]=(byP[o.n]||0)+o.amt;});
+    return{label:label(k),rate:dd.rate,items:dd.items,total:t,half:r2(t/N()),share:g,even:ev,owed:ol};
   });
   const tabItems=tab.items.map(i=>({desc:i.d,eur:i.c==='EUR'?i.a:null,rate:i.rate,gbp:tGBP(i)}));
-  return{date:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}),days:days,totE:r2(totE),totG:r2(totG),tabItems:tabItems,tabTotal:tSum(),rp:repData()};
+  return{date:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}),days:days,totE:r2(totE),totG:r2(totG),anyU:anyU,byPr:others().map(n=>({n:n,amt:r2(byP[n]||0)})),tabItems:tabItems,tabTotal:tSum(),rp:repData()};
 }
 const E=x=>CS()+x.toFixed(2),P=x=>''+HS()+''+x.toFixed(2);
 function reportText(){
@@ -483,11 +503,11 @@ function reportText(){
   L.push(tripTitle().toUpperCase(),ppl.names.join(' & ')+'  |  '+d.date,'','1. DAILY SPLIT ('+splitLabel().toUpperCase()+')');
   d.days.forEach(x=>{
     L.push('',x.label+(mode==='GBP'?'':'  (rate '+x.rate+' per '+HS()+'1)'));
-    x.items.forEach(i=>L.push('  '+E(i.a)+'  '+i.d));
-    L.push('  Day total '+E(x.total)+'  |  Each share '+E(x.half)+'  |  Each pays '+P(x.share));
+    x.items.forEach(i=>L.push('  '+E(i.a)+'  '+i.d+(evenItem(i)?'':' ['+itemW(i).join(', ')+']')));
+    L.push(x.even?('  Day total '+E(x.total)+'  |  Each share '+E(x.half)+'  |  Each pays '+P(x.share)):('  Day total '+E(x.total)+'  |  Owed to '+ppl.payer+': '+owedStr(x.owed)));
   });
   if(!d.days.length)L.push('','No spends logged.');
-  L.push('','Split totals: '+E(d.totE)+' spent  |  Each person\'s shares '+P(d.totG),'','2. TRIP TAB (paid by '+ppl.picker+')');
+  L.push('','Split totals: '+E(d.totE)+' spent  |  '+(d.anyU?'Owed to '+ppl.payer+': '+owedStr(d.byPr):'Each person\'s shares '+P(d.totG)),'','2. TRIP TAB (paid by '+ppl.picker+')');
   d.tabItems.forEach(i=>L.push('  '+(i.eur!==null?E(i.eur)+' (= '+P(i.gbp)+' at '+i.rate+')':P(i.gbp))+'  '+i.desc));
   if(!d.tabItems.length)L.push('  No entries.');
   L.push('Trip Tab total: '+ppl.debtor+' owes '+ppl.picker+' '+P(d.tabTotal));
@@ -497,7 +517,7 @@ function reportText(){
     if(!d.rp.items.length)L.push('  No repayments logged yet.');
     L.push('Repaid '+P(d.rp.paid)+'  |  '+balText(d.rp.bal));
   }
-  L.push('',(d.rp?'4':'3')+'. SUMMARY','Each person\'s share of the daily split: '+P(d.totG),ppl.debtor+' owes '+ppl.picker+' for the Trip Tab: '+P(d.tabTotal));
+  L.push('',(d.rp?'4':'3')+'. SUMMARY',(d.anyU?'Daily split owed to '+ppl.payer+': '+owedStr(d.byPr):'Each person\'s share of the daily split: '+P(d.totG)),ppl.debtor+' owes '+ppl.picker+' for the Trip Tab: '+P(d.tabTotal));
   if(d.rp)L.push('After repayments: '+balText(d.rp.bal));
   return L.join('\n');
 }
@@ -508,11 +528,11 @@ function renderRep(){
   v.append(el('div','rtitle',tripTitle()),el('div','rsub',ppl.names.join(' & ')+'  ·  '+d.date),el('div','rh','1. Daily split ('+splitLabel()+')'));
   d.days.forEach(x=>{
     v.append(row(x.label,mode==='GBP'?'':'rate '+x.rate+' per '+HS()+'1','dh'));
-    x.items.forEach(i=>v.append(row(i.d,E(i.a))));
-    v.append(row('Day total '+E(x.total)+'  ·  each '+E(x.half),'Each pays '+P(x.share),'rf'));
+    x.items.forEach(i=>v.append(row(i.d+(evenItem(i)?'':' ['+itemW(i).join(', ')+']'),E(i.a))));
+    v.append(x.even?row('Day total '+E(x.total)+'  ·  each '+E(x.half),'Each pays '+P(x.share),'rf'):row('Day total '+E(x.total),'Owed to '+ppl.payer+': '+owedStr(x.owed),'rf'));
   });
   if(!d.days.length)v.append(el('div','empty','No spends logged.'));
-  v.append(row('Total spent '+E(d.totE),'Each person\'s shares '+P(d.totG),'rf'));
+  v.append(row('Total spent '+E(d.totE),d.anyU?'Owed: '+owedStr(d.byPr):'Each person\'s shares '+P(d.totG),'rf'));
   v.append(el('div','rh','2. Trip Tab (paid by '+ppl.picker+')'));
   d.tabItems.forEach(i=>v.append(row(i.desc+(i.eur!==null?'  ('+E(i.eur)+' @ '+i.rate+')':''),P(i.gbp))));
   if(!d.tabItems.length)v.append(el('div','empty','No entries.'));
@@ -525,7 +545,7 @@ function renderRep(){
   }
   v.append(el('div','rh',(d.rp?'4':'3')+'. Summary'));
   const bx=el('div','rbox');
-  bx.append(row('Each person\'s share of the daily split',P(d.totG),'rs'),row(ppl.debtor+' owes '+ppl.picker+' for the Trip Tab',P(d.tabTotal),'rs'));
+  bx.append(...(d.anyU?d.byPr.map(o=>row(o.n+' owes '+ppl.payer+' (daily split)',P(o.amt),'rs')):[row('Each person\'s share of the daily split',P(d.totG),'rs')]),row(ppl.debtor+' owes '+ppl.picker+' for the Trip Tab',P(d.tabTotal),'rs'));
   if(d.rp)bx.append(row('After repayments',balText(d.rp.bal),'rs'));
   v.append(bx);
 }
@@ -564,15 +584,15 @@ function makePdf(){
     need(70);y-=16;
     text(x.label,M,y,11,true,DARK);if(mode!=='GBP')text('rate '+x.rate+' per '+HS()+'1',R,y,9,false,GRAY,true);y-=5;
     x.items.forEach(i=>{
-      const ls=wrap(i.d,10,CW-90,false),h=ls.length*13+7;need(h+2);
+      const ls=wrap(i.d+(evenItem(i)?'':' ['+itemW(i).join(', ')+']'),10,CW-90,false),h=ls.length*13+7;need(h+2);
       const top=y;ls.forEach((l,n)=>text(l,M+6,top-12-n*13,10,false,DARK));
       text(E(i.a),R-6,top-12,10,false,DARK,true);
       y=top-h;hline(y,RULE,.4);
     });
-    y-=4;bar('Day total '+E(x.total)+'    Each '+E(x.half),'Each pays',P(x.share),LIGHT);y+=2;
+    y-=4;if(x.even)bar('Day total '+E(x.total)+'    Each '+E(x.half),'Each pays',P(x.share),LIGHT);else bar('Day total '+E(x.total),'Owed to '+ppl.payer+': '+owedStr(x.owed),'',LIGHT);y+=2;
   });
   if(!d.days.length){y-=16;text('No spends logged.',M,y,10,false,GRAY);y-=8;}
-  y-=4;bar('Total spent '+E(d.totE),'Each person\'s shares',P(d.totG),GREEN);
+  y-=4;if(d.anyU)bar('Total spent '+E(d.totE),'Owed: '+owedStr(d.byPr),'',GREEN);else bar('Total spent '+E(d.totE),'Each person\'s shares',P(d.totG),GREEN);
   heading('2. Trip Tab (paid by '+ppl.picker+')');
   d.tabItems.forEach(i=>{
     const ls=wrap(i.desc,10,CW-90,false),sub=i.eur!==null,h=ls.length*13+(sub?11:0)+7;need(h+2);
@@ -596,7 +616,7 @@ function makePdf(){
     y-=4;bar('Owed '+P(d.rp.final)+'    Repaid '+P(d.rp.paid),d.rp.bal>0.004?'Still owed':(d.rp.bal<-0.004?'Overpaid':'Balance'),P(Math.abs(d.rp.bal)),GREEN);
   }
   heading((d.rp?'4':'3')+'. Summary');
-  const rowsS=[['Each person\'s share of the daily split',P(d.totG)],[ppl.debtor+' owes '+ppl.picker+' for the Trip Tab',P(d.tabTotal)]];
+  const rowsS=(d.anyU?d.byPr.map(o=>[o.n+' owes '+ppl.payer+' (daily split)',P(o.amt)]):[['Each person\'s share of the daily split',P(d.totG)]]).concat([[ppl.debtor+' owes '+ppl.picker+' for the Trip Tab',P(d.tabTotal)]]);
   if(d.rp)rowsS.push(['After repayments',d.rp.bal>0.004?'Still owed '+P(d.rp.bal):(d.rp.bal<-0.004?'Overpaid '+P(-d.rp.bal):'Fully repaid')]);
   need(20+rowsS.length*20);rect(M,y-(14+rowsS.length*20),CW,12+rowsS.length*20,LIGHT);
   rowsS.forEach((r,i)=>{text(r[0],M+10,y-22-i*20,10.5,false,DARK);text(r[1],R-10,y-22-i*20,11.5,true,GREEN,true);});
@@ -765,7 +785,21 @@ $('helpBack').onclick=()=>show(mode?'daily':'start');
 applyCfg();
 // ---- Euro / Pound trip choice ----
 function hasData(){return Object.keys(data.days).some(k=>data.days[k].items.length)||tab.items.length>0||rp.final!==null;}
+let sharerBoxes=[];
+function sharerSel(){return sharerBoxes.length?sharerBoxes.filter(b=>b.cb.checked).map(b=>b.n):ppl.names.slice();}
+function updSpSum(){const q=sharerSel();$('spSum').textContent=q.length===ppl.names.length?'Shared by everyone (equal split)':(q.length?'Shared by: '+q.join(', '):'Pick at least one person');}
+function renderSharers(){
+  const box=$('spBox');box.innerHTML='';sharerBoxes=[];
+  ppl.names.forEach(n=>{
+    const l=document.createElement('label');l.className='chk';
+    const cb=document.createElement('input');cb.type='checkbox';cb.checked=true;cb.onchange=updSpSum;
+    const sp=document.createElement('span');sp.textContent=n;
+    l.append(cb,sp);box.appendChild(l);sharerBoxes.push({n:n,cb:cb});
+  });
+  updSpSum();
+}
 function applyMode(){
+  renderSharers();
   const g=mode==='GBP';
   $('rateWrap').hidden=g;
   $('amt').placeholder=(g?HS():FS())+' 0.00';
@@ -778,6 +812,7 @@ function applyMode(){
   render();renderTab();
 }
 function setMode(m){
+  if(m==='GBP'){Object.keys(data.days).forEach(k=>{data.days[k].rate=1;});save();}
   mode=m;try{localStorage.setItem(K('robsplit-mode'),m);}catch(e){}
   if(m==='GBP'&&cur.home.code==='GBP'){$('country').value='United Kingdom';syncCountryUI();saveCountry();}
   applyMode();show('daily');
@@ -807,18 +842,20 @@ function renderTrips(){
   });
   $('tripListCard').hidden=!mode&&trips.list.length===1;
   $('startBack').hidden=!mode;$('introCard').hidden=!!mode;
-  if(!$('newPeople').value&&ppl.names.length){$('newPeople').value=ppl.names.join(', ');fillSelects();$('selPayer').value=ppl.payer;$('selPicker').value=ppl.picker;$('selDebtor').value=ppl.debtor;}
+  if(!$('newPeople').value&&ppl.names.length){$('newPeople').value=ppl.names.join(', ');fillSelects();$('selPayer').value=ppl.payer;$('selPicker').value=ppl.picker;$('selDebtor').value=ppl.debtor;touched.selPayer=touched.selPicker=touched.selDebtor=true;}
 }
+const touched={};
+['selPayer','selPicker','selDebtor'].forEach(id=>$(id).addEventListener('change',()=>{touched[id]=true;}));
 const parseNames=()=>{const out=[];$('newPeople').value.split(',').map(x=>x.trim()).filter(Boolean).forEach(n=>{if(!out.some(m=>m.toLowerCase()===n.toLowerCase()))out.push(n);});return out;};
 function fillSelects(){
   const ns=parseNames();
   [['selPayer',0],['selPicker',1],['selDebtor',0]].forEach(a=>{
     const el=$(a[0]),prev=el.value;el.innerHTML='';
     ns.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;el.appendChild(o);});
-    el.value=ns.includes(prev)?prev:(ns[a[1]]||ns[0]||'');
+    el.value=(touched[a[0]]&&ns.includes(prev))?prev:(ns[a[1]]||ns[0]||'');
   });
 }
-$('newPeople').addEventListener('input',fillSelects);
+$('newPeople').addEventListener('input',()=>{if(!$('newPeople').value.trim())touched.selPayer=touched.selPicker=touched.selDebtor=false;fillSelects();});
 function fillCur(id,withSame){
   const el=$(id);el.innerHTML='';
   if(withSame){const o=document.createElement('option');o.value='SAME';o.textContent='Same as my home currency (no conversion)';el.appendChild(o);}
@@ -847,9 +884,9 @@ $('sampleBtn').onclick=makeSample;
 function startTrip(){
   const hc=$('homeSel').value,tc=$('tripSel').value,m=(tc==='SAME'||tc===hc)?'GBP':'EUR',cc={home:hc,foreign:m==='GBP'?hc:tc};
   const nm=$('newName').value.trim(),ns=parseNames();
-  if(ns.length<2){$('startErr').textContent='Add at least two names, separated by commas.';return;}
+  if(ns.length<2){$('startErr').textContent='Add at least two names, separated by commas.';try{$('startErr').scrollIntoView({block:'center'});}catch(e){}return;}
   const pk=$('selPicker').value,db=$('selDebtor').value;
-  if(pk===db){$('startErr').textContent='The person who picks up the Trip Tab and the person who owes it must be different.';return;}
+  if(pk===db){$('startErr').textContent='The person who picks up the Trip Tab and the person who owes it must be different.';try{$('startErr').scrollIntoView({block:'center'});}catch(e){}return;}
   $('startErr').textContent='';
   const pp={names:ns,payer:$('selPayer').value,picker:pk,debtor:db};
   if(!mode&&!hasData()){
